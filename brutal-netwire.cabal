@@ -1,0 +1,12 @@
+name:                brutal-netwire
+version:             0.1.0.0
+license-file:        LICENSE
+build-type:          Simple
+cabal-version:       >=1.8
+
+executable foundations
+  main-is: src/Foundations.lhs
+  build-depends:
+      base >= 4 && < 5,
+      netwire >= 5.0.0 && < 5.0.1,
+      transformers >= 0.3.0.0
