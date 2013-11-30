@@ -3,13 +3,15 @@
 
 A Wire was complicated enough but now it's type features six parameters:
 
-< data Wire s e m a b
-          ^ ^ ^ ^ ^
+```
+ data Wire s e m a b
+           ^ ^ ^ ^ ^
   signal --+ | | | |
   event  ----+ | | |
   monad  ------+ | |
   input  --------+ |
   output ----------+
+```
 
 Let's start importing some modules:
 
