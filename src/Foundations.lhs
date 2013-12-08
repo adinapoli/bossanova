@@ -17,11 +17,13 @@ Let's start importing some modules:
 
 > import Prelude hiding ((.))
 > import Control.Wire
-> import Control.Monad.IO.Class
+> import Control.Applicative
 
 Let's start with the simplest Wire:
 
-< WConst
+```
+WConst
+```
 
 This Wire as is easy to guess yield
 always the same value.
@@ -38,19 +40,20 @@ be always the answer to life the universe and everything.
 >              -> m (Either e Int, Wire s e m Int Int)
 > computeConst = stepWire $ stepConstant
 
-Wire is an instance of Monoid, so Wire can be mappended
+A `Wire` is an instance of `Monoid`, so `Wire` can be mappended:
 
 > stepSemigroup :: Monad m => Wire s e m a (Sum Int)
 > stepSemigroup = mkConst . Right $ Sum 42
-
+>
 > fromRight (Right v) = v
 > fromRight _ = undefined
-
+>
 > computeSum :: s -> Either e (Sum Int) -> IO Int
 > computeSum s e = do
->   fmap (getSum . fromRight . fst) $
->     stepWire (stepSemigroup <> stepSemigroup) s e
-
+>   let extract = getSum . fromRight . fst
+>       wire = stepSemigroup <> stepSemigroup
+>   extract <$> stepWire wire s e
+>
 >
 > main :: IO ()
 > main = do
