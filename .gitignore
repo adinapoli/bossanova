@@ -1,5 +1,9 @@
 dist*
+.hsenv
+hsenv*
 .hub
 .cabal*
 cabal.sandbox*
-
+src/*.o
+src/*.hi
+src/flycheck*

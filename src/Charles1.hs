@@ -12,6 +12,7 @@ import GHC.Float
 
 
 --------------------------------------------------------------------------------
+-- Generate an event (e.g. move the mouse) to advance the simulation
 main :: IO ()
 main = runSFML $ do
     let ctxSettings = Just $ W.ContextSettings 24 8 0 1 2
@@ -32,17 +33,18 @@ main = runSFML $ do
       liftIO $ print dt
       (Right res, wire') <- stepWire wire dt (Right (dtime dt))
       liftIO $ print res
+      let dx = (truncate res :: Int) `mod` 500
       let render = G.renderStates {
-                     G.transform = G.translation (double2Float res) 40
+                     G.transform = G.translation (fromIntegral dx) 40
                    }
       drawRectangle wnd rect $ Just render
       display wnd
-      evt <- waitEvent wnd
+      evt <- pollEvent wnd
       case evt of
         Just W.SFEvtClosed -> return ()
         _ -> go wnd rect sess' wire'
 
 
 --------------------------------------------------------------------------------
-challenge1 :: (Monad m, HasTime t s ) => Wire s e m Double Double
-challenge1 = integral 0
+challenge1 :: (Monad m, RealFloat b, HasTime b s ) => Wire s [Int] m a b
+challenge1 = for 500 . time --> for 500 . (-2) * time --> challenge1
