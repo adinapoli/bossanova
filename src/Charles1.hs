@@ -6,12 +6,15 @@
 import Prelude hiding ((.), id)
 
 import Control.Wire
-import Control.Lens
+import Control.Lens hiding (at)
 import FRP.Netwire.Move
 import qualified SFML.Window as W
 import qualified SFML.Graphics as G
 import qualified SFML.System as S
 import Control.Monad.SFML
+import Control.Monad.SFML.Graphics
+import Control.Monad.SFML.Window
+import Control.Monad.SFML.System
 import SFML.Graphics.Color
 import Control.Monad
 import Data.Map
@@ -50,7 +53,7 @@ $(makeLensesFor [("transform", "l_transform")] ''G.RenderStates)
 
 --------------------------------------------------------------------------------
 spriteComponent :: G.Sprite
-                -> GameWire NominalDiffTime NominalDiffTime
+                -> GameWire NominalDiffTime b
                 -> Component
 spriteComponent spr wire = Component $ \GameState{..} -> do
                             sess <- gets $ view gameTime
@@ -60,8 +63,25 @@ spriteComponent spr wire = Component $ \GameState{..} -> do
                               Right _ -> do
                                 lift $ drawSprite _gameWin spr Nothing
                                 return (spriteComponent spr wire')
-                              Left  _ -> return $ spriteComponent spr wire
+                              Left  _ -> return $ spriteComponent spr wire'
 
+
+--------------------------------------------------------------------------------
+translateComponent :: G.Sprite -> GameWire NominalDiffTime NominalDiffTime
+                   -> Component
+translateComponent spr wire = Component $ \GameState{..} -> do
+                            sess <- gets $ view gameTime
+                            (dt, sess') <- stepSession sess
+                            (res, wire') <- stepWire wire dt (Right (dtime dt))
+                            liftIO $ print res
+                            case res of
+                              Right dx -> do
+                                liftIO $ print dx
+                                let dx' = (truncate dx :: Int) `mod` 500
+                                liftIO $ print dx'
+                                lift $ setPosition spr (S.Vec2f 400 (fromIntegral dx'))
+                                return (translateComponent spr wire')
+                              Left  _ -> return $ spriteComponent spr wire'
 
 
 --------------------------------------------------------------------------------
@@ -69,7 +89,7 @@ spriteComponent spr wire = Component $ \GameState{..} -> do
 main :: IO ()
 main =  runSFML $ do
       initState  <- initGame
-      flip evalStateT initState gameLoop
+      evalStateT gameLoop initState
 
 
 --------------------------------------------------------------------------------
@@ -85,12 +105,17 @@ initGame = do
     text <- textureFromFile "resources/wood.jpg" (Just $ G.IntRect 40 40 40 40)
     setTexture spr text True
     spr2 <- createSprite
-    setTextureRect spr (G.IntRect 40 40 40 40)
+    setTextureRect spr2 (G.IntRect 40 40 40 40)
     setTexture spr2 text True
     move spr2 (S.Vec2f 400 300)
 
-    let e1 = (Entity G.renderStates [spriteComponent spr challenge1])
-        e2 = (Entity G.renderStates [spriteComponent spr2 periodicW])
+    let e1 = (Entity G.renderStates [
+            translateComponent spr challenge1
+          , spriteComponent spr challenge1
+          ])
+        e2 = (Entity G.renderStates [
+            spriteComponent spr2 blink
+          ])
     return (GameState wnd (countSession_ 1) [e1, e2])
 
 
@@ -99,21 +124,18 @@ gameLoop = do
   sess <- gets $ view gameTime
   wnd <- gets  $ view gameWin
   ent <- gets $ view entities
-  lift $ clearRenderWindow wnd blue
-  (dt, sess') <- stepSession sess
-  --let dx = (truncate res :: Int) `mod` 500
-  --let dx2 = (truncate res2 :: Int) `mod` 500
-  --let e1' = rState . l_transform .~ G.translation (fromIntegral dx) 40 $ e1
-  --let e2' = rState . l_transform .~ G.translation 200 (fromIntegral dx2) $ e2
-  --lift $ drawSprite wnd (e1 ^. graphics) $ Just (e1' ^. rState)
-  --lift $ drawSprite wnd (e2 ^. graphics) $ Just (e2' ^. rState)
-  evt <- lift $ pollEvent wnd
+  lift $ clearRenderWindow wnd yellow
 
+  -- Update the entities
   ticked <- mapM tickComponents ent
+
+  -- Update the game state
+  (_, sess') <- stepSession sess
   gameTime .= sess'
   entities .= ticked
   lift $ display wnd
 
+  evt <- lift $ pollEvent wnd
   case evt of
     Just W.SFEvtClosed -> return ()
     _ -> gameLoop
@@ -128,8 +150,12 @@ tickComponents e = do
 
 
 --------------------------------------------------------------------------------
-challenge1 = for 600 . time 
--- --> for 500 . (-1) * time --> challenge1
+challenge1 = for 600 . time --> for 500 . (-1) * time --> challenge1
 
-periodicW = (after 500 . (-1) * time --> for 500 .  time --> periodicW)
-            <|> pure 30
+--periodicW = (after 500 . (-1) * time --> for 500 .  time --> periodicW)
+--            <|> pure 30
+
+
+-- I'm trying to create a wire which produce and inhibits periodically.
+-- But I'm failing.
+blink = for 400 --> asSoonAs . at 400  --> blink
