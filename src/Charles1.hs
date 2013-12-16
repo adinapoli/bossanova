@@ -76,8 +76,9 @@ translateComponent spr wire = Component $ \GameState{..} -> do
                             (res, wire') <- stepWire wire dt (Right (dtime dt))
                             case res of
                               Right dx -> do
-                                let dx' = (truncate dx :: Int) `mod` 500
-                                lift $ setPosition spr (S.Vec2f 400 (fromIntegral dx'))
+                                lift $ move spr
+                                      (S.Vec2f (cos $ fromIntegral . fromEnum $ dx)
+                                               (cos $ fromIntegral . fromEnum $ dx))
                                 return (translateComponent spr wire')
                               Left  _ -> return $ spriteComponent spr wire'
 
@@ -98,6 +99,7 @@ initGame = do
            "OCharles' Challenge 1"
            [W.SFDefaultStyle]
            ctxSettings
+    setFramerateLimit wnd 30
     spr <- createSprite
     setTextureRect spr (G.IntRect 40 40 40 40)
     text <- textureFromFile "resources/wood.jpg" (Just $ G.IntRect 40 40 40 40)
@@ -149,12 +151,9 @@ tickComponents e = do
 
 
 --------------------------------------------------------------------------------
-challenge1 = for 10 . integral 0 . pure 20 -->
-             for 5 . (-1) * time --> challenge1
-
---periodicW = (after 500 . (-1) * time --> for 500 .  time --> periodicW)
---            <|> pure 30
-
+challenge1 = for 10 . integral 0 . pure 20    -->
+             for 10 . integral 0 . pure (-20) -->
+             challenge1
 
 -- I'm trying to create a wire which produce and inhibits periodically.
 -- But I'm failing.
