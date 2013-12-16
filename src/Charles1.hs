@@ -63,7 +63,8 @@ spriteComponent spr wire = Component $ \GameState{..} -> do
                               Right _ -> do
                                 lift $ drawSprite _gameWin spr Nothing
                                 return (spriteComponent spr wire')
-                              Left  _ -> return $ spriteComponent spr wire'
+                              Left  _ -> do
+                                return $ spriteComponent spr wire'
 
 
 --------------------------------------------------------------------------------
@@ -73,12 +74,9 @@ translateComponent spr wire = Component $ \GameState{..} -> do
                             sess <- gets $ view gameTime
                             (dt, sess') <- stepSession sess
                             (res, wire') <- stepWire wire dt (Right (dtime dt))
-                            liftIO $ print res
                             case res of
                               Right dx -> do
-                                liftIO $ print dx
                                 let dx' = (truncate dx :: Int) `mod` 500
-                                liftIO $ print dx'
                                 lift $ setPosition spr (S.Vec2f 400 (fromIntegral dx'))
                                 return (translateComponent spr wire')
                               Left  _ -> return $ spriteComponent spr wire'
@@ -116,7 +114,7 @@ initGame = do
         e2 = (Entity G.renderStates [
             spriteComponent spr2 blink
           ])
-    return (GameState wnd (countSession_ 1) [e1, e2])
+    return (GameState wnd clockSession_ [e1, e2])
 
 
 gameLoop = do
@@ -130,7 +128,8 @@ gameLoop = do
   ticked <- mapM tickComponents ent
 
   -- Update the game state
-  (_, sess') <- stepSession sess
+  (dt, sess') <- stepSession sess
+  liftIO $ print dt
   gameTime .= sess'
   entities .= ticked
   lift $ display wnd
@@ -150,7 +149,8 @@ tickComponents e = do
 
 
 --------------------------------------------------------------------------------
-challenge1 = for 600 . time --> for 500 . (-1) * time --> challenge1
+challenge1 = for 10 . integral 0 . pure 20 -->
+             for 5 . (-1) * time --> challenge1
 
 --periodicW = (after 500 . (-1) * time --> for 500 .  time --> periodicW)
 --            <|> pure 30
@@ -158,4 +158,4 @@ challenge1 = for 600 . time --> for 500 . (-1) * time --> challenge1
 
 -- I'm trying to create a wire which produce and inhibits periodically.
 -- But I'm failing.
-blink = for 400 --> asSoonAs . at 400  --> blink
+blink = after 4 . (for 5 --> blink)
