@@ -81,3 +81,18 @@ moveComponent spr wire = LogicComponent $ \GameState{..} -> do
                                                (fromIntegral dy))
                                 return (moveComponent spr wire')
                               Left  _ -> return $ moveComponent spr wire'
+
+--------------------------------------------------------------------------------
+textSizeComponent :: G.Text
+                  -> GameWire NominalDiffTime Int
+                  -> UIComponent
+textSizeComponent txt wire = UIComponent $ \GameState{..} -> do
+                               sess <- gets $ view gameTime
+                               (dt, sess') <- stepSession sess
+                               (res, wire') <- stepWire wire dt (Right (dtime dt))
+                               case res of
+                                 Right v -> do
+                                   lift $ setTextCharacterSize txt v
+                                   lift $ drawText _gameWin txt Nothing
+                                   return (textSizeComponent txt wire')
+                                 Left  _ -> return $ textSizeComponent txt wire'

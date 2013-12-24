@@ -27,8 +27,7 @@ newtype UIComponent = UIComponent
 
 --------------------------------------------------------------------------------
 data Entity = Entity {
-    _rState :: G.RenderStates
-  , _lcomponents :: [LogicComponent]
+    _lcomponents :: [LogicComponent]
   , _uicomponents :: [UIComponent]
 }
 
@@ -41,7 +40,6 @@ type EntityManager = Map.IntMap Entity
 data GameState = GameState {
     _gameWin    :: G.RenderWindow
   , _gameTime   :: Session GameMonad (Timed NominalDiffTime ())
-  , _entityNum  :: Int
   , _entityMgr  :: EntityManager
 }
 

@@ -70,3 +70,11 @@ playerKeyboard = moveLeft <|>
 --------------------------------------------------------------------------------
 always :: GameWire a Bool
 always = pure True
+
+
+--------------------------------------------------------------------------------
+glowingText :: GameWire NominalDiffTime Int
+glowingText = for 0.5 . pure 20 -->
+              for 0.5 . pure 22 -->
+              for 0.5 . pure 24 -->
+              glowingText

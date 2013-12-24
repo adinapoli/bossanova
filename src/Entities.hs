@@ -13,12 +13,26 @@ import Types
 -- | Add an entity.
 (#>) :: Entity -> GameMonad ()
 (#>) e = do
-  currentId <- gets $ view entityNum
+  currentId <- fmap Map.size (gets $ view entityMgr)
   eMgr <- gets $ view entityMgr
   entityMgr .= Map.insert currentId e eMgr
-  entityNum += 1
 
 
+--------------------------------------------------------------------------------
+-- | Delete an entity.
+(#~) :: Int -> GameMonad ()
+(#~) eId = do
+  eMgr <- gets $ view entityMgr
+  entityMgr .= Map.delete eId eMgr
+
+--------------------------------------------------------------------------------
+-- | Delete the last entity.
+popEntity :: GameMonad ()
+popEntity = do
+  currentId <- fmap Map.size (gets $ view entityMgr)
+  eMgr <- gets $ view entityMgr
+  entityMgr .= Map.delete (currentId - 1) eMgr
+  
 --------------------------------------------------------------------------------
 -- | Builds an entity manager from a list of entities.
 fromList :: [Entity] -> EntityManager
