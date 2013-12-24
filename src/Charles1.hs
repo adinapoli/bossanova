@@ -35,7 +35,7 @@ import Wires
 -- memory.
 main :: IO ()
 main =  runSFML $ do
-      initState  <- initGame
+      initState  <- loadResources
       flip evalStateT initState $ do
         showMenu
         gameLoop
@@ -74,7 +74,7 @@ showMenu = do
 
 
 --------------------------------------------------------------------------------
-initGame = do
+loadResources = do
     let ctxSettings = Just $ W.ContextSettings 24 8 4 3 3
     wnd <- createRenderWindow
            (W.VideoMode 640 480 32)
@@ -93,17 +93,18 @@ initGame = do
     setTexture spr3 text True
     move spr3 (S.Vec2f 20 300)
 
-    let e1 = (Entity G.renderStates [
-            translateComponent spr challenge1
-          , spriteComponent spr challenge1
-          ])
-        e2 = (Entity G.renderStates [
-            spriteComponent spr2 blink
-          ])
-        player = (Entity G.renderStates [
-                 spriteComponent spr3 always
-               , moveComponent spr3 playerKeyboard
-          ])
+    let e1 = (Entity G.renderStates
+             [ translateComponent spr challenge1]
+             [ spriteComponent spr always]
+             )
+        e2 = (Entity G.renderStates
+             []
+             [ spriteComponent spr2 blink]
+             )
+        player = (Entity G.renderStates
+                  [ moveComponent spr3 playerKeyboard]
+                  [ spriteComponent spr3 always ]
+                 )
         initialEntities = [e1, e2, player]
     return (GameState wnd
                       clockSession_
@@ -121,11 +122,8 @@ gameLoop = do
   eMgr <- gets $ view entityMgr
   lift $ clearRenderWindow wnd yellow
 
-  -- Update the logic
-  mapM_ tickComponents (Map.keys eMgr)
-
-  -- Update the graphics
-  -- TODO
+  -- Update the world
+  mapM_ updateComponents (Map.keys eMgr)
 
   -- Update the game state
   (dt, sess') <- stepSession sess

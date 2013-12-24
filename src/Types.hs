@@ -17,12 +17,19 @@ type GameWire = Wire (Timed NominalDiffTime ()) () GameMonad
 type GameMonad = StateT GameState SFML
 
 --------------------------------------------------------------------------------
-newtype Component = Component { tick :: GameState -> GameMonad Component }
+newtype LogicComponent = LogicComponent
+                         { tick :: GameState -> GameMonad LogicComponent }
+
+--------------------------------------------------------------------------------
+newtype UIComponent = UIComponent
+                      { render :: GameState -> GameMonad UIComponent }
+
 
 --------------------------------------------------------------------------------
 data Entity = Entity {
     _rState :: G.RenderStates
-  , _components :: [Component]
+  , _lcomponents :: [LogicComponent]
+  , _uicomponents :: [UIComponent]
 }
 
 

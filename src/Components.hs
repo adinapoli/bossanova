@@ -5,6 +5,8 @@ module Components where
 import Prelude hiding ((.), id)
 import qualified SFML.Graphics as G
 import Types
+import Control.Monad
+import Control.Parallel.Strategies
 import Control.Wire
 import Control.Monad.Trans.State
 import Control.Monad.SFML
@@ -16,21 +18,29 @@ import qualified Data.IntMap.Strict as Map
 
 
 --------------------------------------------------------------------------------
-tickComponents :: Map.Key -> GameMonad ()
-tickComponents idx = do
+-- Split and parallelise this on the long run to make it scale.
+updateComponents :: Map.Key -> GameMonad ()
+updateComponents idx = do
   gameState <- get
   eMgr <- gets $ view entityMgr
   let e = eMgr Map.! idx
-  let comp = e ^. components
-  tickedComponents <- mapM (`tick` gameState) comp
-  entityMgr .= Map.insert idx (components .~ tickedComponents $ e) eMgr
+  let lcomp = e ^. lcomponents
+  let uicomp = e ^. uicomponents
+  (logic, ui) <- runEval $ do
+    tickedComponents <- rpar $ mapM (`tick` gameState) lcomp
+    renderedComponents <- rpar $ mapM (`render` gameState) uicomp
+    rseq tickedComponents
+    rseq renderedComponents
+    return $ liftM2 (,) tickedComponents renderedComponents
+  entityMgr .= Map.insert idx (lcomponents .~ logic $ e) eMgr
+  entityMgr .= Map.insert idx (uicomponents .~ ui $ e) eMgr
 
 
 --------------------------------------------------------------------------------
 spriteComponent :: G.Sprite
                 -> GameWire NominalDiffTime b
-                -> Component
-spriteComponent spr wire = Component $ \GameState{..} -> do
+                -> UIComponent
+spriteComponent spr wire = UIComponent $ \GameState{..} -> do
                             sess <- gets $ view gameTime
                             (dt, sess') <- stepSession sess
                             (res, wire') <- stepWire wire dt (Right (dtime dt))
@@ -43,8 +53,8 @@ spriteComponent spr wire = Component $ \GameState{..} -> do
 
 --------------------------------------------------------------------------------
 translateComponent :: G.Sprite -> GameWire NominalDiffTime NominalDiffTime
-                   -> Component
-translateComponent spr wire = Component $ \GameState{..} -> do
+                   -> LogicComponent
+translateComponent spr wire = LogicComponent $ \GameState{..} -> do
                             sess <- gets $ view gameTime
                             (dt, sess') <- stepSession sess
                             (res, wire') <- stepWire wire dt (Right (dtime dt))
@@ -52,15 +62,15 @@ translateComponent spr wire = Component $ \GameState{..} -> do
                               Right dx -> do
                                 lift $ move spr
                                       (S.Vec2f (cos $ fromIntegral . fromEnum $ dx)
-                                               (cos $ fromIntegral . fromEnum $ dx))
+                                               (sin $ fromIntegral . fromEnum $ dx))
                                 return (translateComponent spr wire')
                               Left  _ -> return $ translateComponent spr wire'
 
 --------------------------------------------------------------------------------
 moveComponent :: G.Sprite
               -> GameWire NominalDiffTime (Int, Int)
-              -> Component
-moveComponent spr wire = Component $ \GameState{..} -> do
+              -> LogicComponent
+moveComponent spr wire = LogicComponent $ \GameState{..} -> do
                             sess <- gets $ view gameTime
                             (dt, sess') <- stepSession sess
                             (res, wire') <- stepWire wire dt (Right (dtime dt))
