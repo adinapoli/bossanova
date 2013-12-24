@@ -7,7 +7,6 @@ import Prelude hiding ((.), id)
 
 import Control.Wire
 import Control.Lens hiding (at)
-import FRP.Netwire.Move
 import qualified SFML.Window as W
 import qualified SFML.Graphics as G
 import qualified SFML.System as S
@@ -23,110 +22,55 @@ import Control.Monad.Trans.State
 import Control.Monad.Trans.Class (lift)
 
 
-
-type GameWire = Wire (Timed NominalDiffTime ()) () GameMonad
-
 --------------------------------------------------------------------------------
-type GameMonad = StateT GameState SFML
+import Types
+import Entities
+import Components
+import Wires
 
---------------------------------------------------------------------------------
-newtype Component = Component { tick :: GameState -> GameMonad Component }
-
---------------------------------------------------------------------------------
-data Entity = Entity {
-    _rState :: G.RenderStates
-  , _components :: [Component]
-}
-
-
---------------------------------------------------------------------------------
-type EntityManager = Map.IntMap Entity
-
-
---------------------------------------------------------------------------------
-data GameState = GameState {
-    _gameWin    :: G.RenderWindow
-  , _gameTime   :: Session GameMonad (Timed NominalDiffTime ())
-  , _entityNum  :: Int
-  , _entityMgr  :: EntityManager
-}
-
-
---------------------------------------------------------------------------------
-$(makeLenses ''GameState)
-$(makeLenses ''Entity)
-$(makeLensesFor [("transform", "l_transform")] ''G.RenderStates)
-
-
-
---------------------------------------------------------------------------------
-spriteComponent :: G.Sprite
-                -> GameWire NominalDiffTime b
-                -> Component
-spriteComponent spr wire = Component $ \GameState{..} -> do
-                            sess <- gets $ view gameTime
-                            (dt, sess') <- stepSession sess
-                            (res, wire') <- stepWire wire dt (Right (dtime dt))
-                            case res of
-                              Right _ -> do
-                                lift $ drawSprite _gameWin spr Nothing
-                                return (spriteComponent spr wire')
-                              Left  _ -> return $ spriteComponent spr wire'
-
-
---------------------------------------------------------------------------------
--- | Add an entity.
-(#>) :: Entity -> GameMonad ()
-(#>) e = do
-  currentId <- gets $ view entityNum
-  eMgr <- gets $ view entityMgr
-  entityMgr .= Map.insert currentId e eMgr
-  entityNum += 1
-
-
---------------------------------------------------------------------------------
--- | Builds an entity manager from a list of entities.
-fromList :: [Entity] -> EntityManager
-fromList ls = Map.fromList (zip [1..] ls)
-
-
---------------------------------------------------------------------------------
-translateComponent :: G.Sprite -> GameWire NominalDiffTime NominalDiffTime
-                   -> Component
-translateComponent spr wire = Component $ \GameState{..} -> do
-                            sess <- gets $ view gameTime
-                            (dt, sess') <- stepSession sess
-                            (res, wire') <- stepWire wire dt (Right (dtime dt))
-                            case res of
-                              Right dx -> do
-                                lift $ move spr
-                                      (S.Vec2f (cos $ fromIntegral . fromEnum $ dx)
-                                               (cos $ fromIntegral . fromEnum $ dx))
-                                return (translateComponent spr wire')
-                              Left  _ -> return $ translateComponent spr wire'
-
---------------------------------------------------------------------------------
-moveComponent :: G.Sprite
-              -> GameWire NominalDiffTime (Int, Int)
-              -> Component
-moveComponent spr wire = Component $ \GameState{..} -> do
-                            sess <- gets $ view gameTime
-                            (dt, sess') <- stepSession sess
-                            (res, wire') <- stepWire wire dt (Right (dtime dt))
-                            case res of
-                              Right (dx, dy) -> do
-                                lift $ move spr
-                                      (S.Vec2f (fromIntegral dx)
-                                               (fromIntegral dy))
-                                return (moveComponent spr wire')
-                              Left  _ -> return $ moveComponent spr wire'
 
 --------------------------------------------------------------------------------
 -- MAIN STARTS HERE
+-- | not worring about resource alloc/dealloc. Atm everything is retained in
+-- memory.
 main :: IO ()
 main =  runSFML $ do
       initState  <- initGame
-      evalStateT gameLoop initState
+      flip evalStateT initState $ do
+        showMenu
+        gameLoop
+
+
+--------------------------------------------------------------------------------
+showMenu :: GameMonad ()
+showMenu = do
+    win <- gets $ view gameWin
+    lift $ do
+      clearRenderWindow win white
+      playTxt <- createText
+      fnt <- fontFromFile "resources/ProFont.ttf"
+      setTextFont playTxt fnt
+      setTextString playTxt "Press Enter to play!"
+      setTextCharacterSize playTxt 20
+      setTextColor playTxt white
+      setPosition playTxt (S.Vec2f 200 430)
+      menuTex <- textureFromFile
+                 "resources/menu.png"
+                 (Just $ G.IntRect 0 0 640 480)
+      menuSpr <- createSprite
+      setTexture menuSpr menuTex True
+      showMenuLoop win menuSpr playTxt
+
+  where
+    showMenuLoop win menuSpr playTxt = do
+        drawSprite win menuSpr Nothing
+        drawSprite win menuSpr Nothing
+        drawText   win playTxt Nothing
+        display win
+        wantsToPlay <- pollEvent win
+        case wantsToPlay of
+         Just (W.SFEvtKeyPressed W.KeyReturn _ _ _ _) -> return ()
+         _ -> showMenuLoop win menuSpr playTxt
 
 
 --------------------------------------------------------------------------------
@@ -134,7 +78,7 @@ initGame = do
     let ctxSettings = Just $ W.ContextSettings 24 8 4 3 3
     wnd <- createRenderWindow
            (W.VideoMode 640 480 32)
-           "Stupid Game"
+           "The Lost Lens"
            [W.SFDefaultStyle]
            ctxSettings
     setFramerateLimit wnd 60
@@ -185,7 +129,6 @@ gameLoop = do
 
   -- Update the game state
   (dt, sess') <- stepSession sess
-  liftIO $ print dt
   gameTime .= sess'
   lift $ display wnd
 
@@ -193,70 +136,3 @@ gameLoop = do
   case evt of
     Just W.SFEvtClosed -> return ()
     _ -> gameLoop
-
-
---------------------------------------------------------------------------------
-tickComponents :: Map.Key -> GameMonad ()
-tickComponents idx = do
-  gameState <- get
-  eMgr <- gets $ view entityMgr
-  let e = eMgr Map.! idx
-  let comp = e ^. components
-  tickedComponents <- mapM (`tick` gameState) comp
-  entityMgr .= Map.insert idx (components .~ tickedComponents $ e) eMgr
-
-
---------------------------------------------------------------------------------
-challenge1 = for 10 . integral 0 . pure 20    -->
-             for 10 . integral 0 . pure (-20) -->
-             challenge1
-
-
---------------------------------------------------------------------------------
--- I'm trying to create a wire which produce and inhibits periodically.
--- But I'm failing.
-blink = after 4 . (for 5 --> blink)
-
-
-ifPressedGo :: W.KeyCode -> (Int,Int) -> GameWire NominalDiffTime (Int, Int)
-ifPressedGo code coords = mkGen_ $ \_ -> do
-  keyPressed <- lift $ isKeyPressed code
-  if keyPressed
-     then return . Right $ coords
-     else return . Left $ ()
-
---------------------------------------------------------------------------------
-moveLeft :: GameWire NominalDiffTime (Int, Int)
-moveLeft = ifPressedGo W.KeyA (-5, 0)
-
-
---------------------------------------------------------------------------------
-moveRight :: GameWire NominalDiffTime (Int, Int)
-moveRight = ifPressedGo W.KeyD (5, 0)
-
---------------------------------------------------------------------------------
-moveUp :: GameWire NominalDiffTime (Int, Int)
-moveUp = ifPressedGo W.KeyW (0, -5)
-
---------------------------------------------------------------------------------
-moveDown :: GameWire NominalDiffTime (Int, Int)
-moveDown = ifPressedGo W.KeyS (0, 5)
-
---------------------------------------------------------------------------------
-stand :: GameWire NominalDiffTime (Int, Int)
-stand = pure (0,0)
-
-
---------------------------------------------------------------------------------
-playerKeyboard :: GameWire NominalDiffTime (Int, Int)
-playerKeyboard = moveLeft <|>
-                 moveRight <|>
-                 moveUp <|> 
-                 moveDown <|>
-                 stand
-
-
-
-
---------------------------------------------------------------------------------
-always = pure True

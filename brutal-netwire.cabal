@@ -11,7 +11,13 @@ executable foundations
       netwire >= 5.0.0 && < 5.0.1
 
 executable charles1
-  main-is: src/Charles1.hs
+  main-is: Charles1.hs
+  hs-source-dirs: src
+  other-modules:
+    Components
+    Entities
+    Types
+    Wires
   build-depends:
       base >= 4 && < 5,
       netwire >= 5.0.0 && < 5.0.1,
