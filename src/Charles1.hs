@@ -102,14 +102,16 @@ buildEntities :: GameMonad ()
 buildEntities = do
     ent <- lift $ do
       spr <- createSprite
-      setTextureRect spr (G.IntRect 40 40 40 40)
-      text <- textureFromFile "resources/wood.jpg" (Just $ G.IntRect 40 40 40 40)
+      text <- textureFromFile "resources/sprites.png" Nothing
       setTexture spr text True
+      setTextureRect spr (G.IntRect 1 1 32 32)
       spr2 <- createSprite
       setTexture spr2 text True
+      setTextureRect spr2 (G.IntRect 1 1 32 32)
       move spr2 (S.Vec2f 400 300)
       spr3 <- createSprite
       setTexture spr3 text True
+      setTextureRect spr3 (G.IntRect 34 1 32 32)
       move spr3 (S.Vec2f 20 300)
       let e1 = (Entity
                [ translateComponent spr challenge1]
