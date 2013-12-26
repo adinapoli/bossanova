@@ -2,6 +2,7 @@
 
 module Types where
 
+import Data.Word
 import Control.Wire
 import Control.Lens hiding (at)
 import Control.Monad.Trans.State
@@ -40,6 +41,8 @@ type EntityManager = Map.IntMap Entity
 data GameState = GameState {
     _gameWin    :: G.RenderWindow
   , _gameTime   :: Session GameMonad (Timed NominalDiffTime ())
+  , _frameTime  :: Word64
+  , _fps        :: Int
   , _entityMgr  :: EntityManager
 }
 

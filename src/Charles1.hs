@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DoAndIfThenElse #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -16,10 +17,13 @@ import Control.Monad.SFML.Window
 import Control.Monad.SFML.System
 import SFML.Graphics.Color
 import Control.Monad hiding (when)
+import qualified Control.Monad as M
 import qualified Data.IntMap.Strict as Map
 import GHC.Float
 import Control.Monad.Trans.State
 import Control.Monad.Trans.Class (lift)
+import Data.Word
+import Data.Time.Clock.POSIX (getPOSIXTime)
 
 
 --------------------------------------------------------------------------------
@@ -96,8 +100,17 @@ initState = do
            [W.SFDefaultStyle]
            ctxSettings
     setFramerateLimit wnd 60
-    return (GameState wnd clockSession_ Map.empty)
+    return (GameState wnd clockSession_ 0 0 Map.empty)
 
+
+------------------------------------------------------------------------------
+milliTime :: IO Word64
+milliTime = do
+    seconds <- realToFrac `fmap` getPOSIXTime :: IO Double
+    return $ round $ seconds * 1e3
+
+
+------------------------------------------------------------------------------
 buildEntities :: GameMonad ()
 buildEntities = do
     ent <- lift $ do
@@ -147,7 +160,24 @@ gameLoop = do
   gameTime .= sess'
   lift $ display wnd
 
+  updateAndDisplayFPS
+
   evt <- lift $ pollEvent wnd
   case evt of
     Just W.SFEvtClosed -> return ()
     _ -> gameLoop
+
+
+updateAndDisplayFPS :: GameMonad ()
+updateAndDisplayFPS = do
+  fTime <- gets $ view frameTime
+  fps' <- gets $ view fps
+  curTime <- liftIO milliTime
+  let dt = curTime - fTime
+  if dt >= 1000
+    then do
+      frameTime .= curTime
+      fps .= 0
+      liftIO $ putStrLn $ "FPS: " ++ show (fps' + 1)
+    else do
+      fps += 1

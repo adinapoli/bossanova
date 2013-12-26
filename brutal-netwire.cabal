@@ -25,5 +25,6 @@ executable charles1
       SFML >= 0.2.0.0,
       SFML-control >= 0.2.0.2,
       lens,
+      time,
       transformers,
       containers
