@@ -4,7 +4,6 @@ module Components where
 
 import Prelude hiding ((.), id)
 import qualified SFML.Graphics as G
-import Types
 import Control.Monad
 import Control.Parallel.Strategies
 import Control.Wire
@@ -15,6 +14,10 @@ import Control.Lens hiding (at)
 import Control.Monad.Trans.Class (lift)
 import qualified SFML.System as S
 import qualified Data.IntMap.Strict as Map
+
+
+import Types
+import Particles
 
 
 --------------------------------------------------------------------------------
@@ -41,14 +44,14 @@ spriteComponent :: G.Sprite
                 -> GameWire NominalDiffTime b
                 -> UIComponent
 spriteComponent spr wire = UIComponent $ \GameState{..} -> do
-                            sess <- gets $ view gameTime
-                            (dt, sess') <- stepSession sess
-                            (res, wire') <- stepWire wire dt (Right (dtime dt))
-                            case res of
-                              Right _ -> do
-                                lift $ drawSprite _gameWin spr Nothing
-                                return (spriteComponent spr wire')
-                              Left  _ -> return $ spriteComponent spr wire'
+  sess <- gets $ view gameTime
+  (dt, sess') <- stepSession sess
+  (res, wire') <- stepWire wire dt (Right (dtime dt))
+  case res of
+    Right _ -> do
+      lift $ drawSprite _gameWin spr Nothing
+      return (spriteComponent spr wire')
+    Left  _ -> return $ spriteComponent spr wire'
 
 
 --------------------------------------------------------------------------------
@@ -71,28 +74,42 @@ moveComponent :: G.Sprite
               -> GameWire NominalDiffTime (Int, Int)
               -> LogicComponent
 moveComponent spr wire = LogicComponent $ \GameState{..} -> do
-                            sess <- gets $ view gameTime
-                            (dt, sess') <- stepSession sess
-                            (res, wire') <- stepWire wire dt (Right (dtime dt))
-                            case res of
-                              Right (dx, dy) -> do
-                                lift $ move spr
-                                      (S.Vec2f (fromIntegral dx)
-                                               (fromIntegral dy))
-                                return (moveComponent spr wire')
-                              Left  _ -> return $ moveComponent spr wire'
+  sess <- gets $ view gameTime
+  (dt, sess') <- stepSession sess
+  (res, wire') <- stepWire wire dt (Right (dtime dt))
+  case res of
+    Right (dx, dy) -> do
+      lift $ move spr
+            (S.Vec2f (fromIntegral dx)
+                     (fromIntegral dy))
+      return (moveComponent spr wire')
+    Left  _ -> return $ moveComponent spr wire'
 
 --------------------------------------------------------------------------------
 textSizeComponent :: G.Text
                   -> GameWire NominalDiffTime Int
                   -> UIComponent
 textSizeComponent txt wire = UIComponent $ \GameState{..} -> do
-                               sess <- gets $ view gameTime
-                               (dt, sess') <- stepSession sess
-                               (res, wire') <- stepWire wire dt (Right (dtime dt))
-                               case res of
-                                 Right v -> do
-                                   lift $ setTextCharacterSize txt v
-                                   lift $ drawText _gameWin txt Nothing
-                                   return (textSizeComponent txt wire')
-                                 Left  _ -> return $ textSizeComponent txt wire'
+  sess <- gets $ view gameTime
+  (dt, sess') <- stepSession sess
+  (res, wire') <- stepWire wire dt (Right (dtime dt))
+  case res of
+    Right v -> do
+      lift $ setTextCharacterSize txt v
+      lift $ drawText _gameWin txt Nothing
+      return (textSizeComponent txt wire')
+    Left  _ -> return $ textSizeComponent txt wire'
+
+
+--------------------------------------------------------------------------------
+emitterComponent :: Emitter -> LogicComponent
+emitterComponent emt@Emitter{..} = LogicComponent $ \GameState{..} -> do
+  (dt, sess') <- stepSession _emitTime
+  (res, wire') <- stepWire _emitWire dt (Right (dtime dt))
+  case res of
+    Right _ -> --spawn the particles somehow
+      return $ emitterComponent ((emitTime .~ sess') .
+                                 (emitWire .~ wire') $ emt)
+    Left _ -> --Stay still
+      return $ emitterComponent ((emitTime .~ sess') .
+                                 (emitWire .~ wire') $ emt)

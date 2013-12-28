@@ -10,12 +10,13 @@ import qualified Data.IntMap.Strict as Map
 import Types
 
 --------------------------------------------------------------------------------
--- | Add an entity.
-(#>) :: Entity -> GameMonad ()
+-- | Add an entity. Returns the id of the created entity.
+(#>) :: Entity -> GameMonad Int
 (#>) e = do
   currentId <- fmap Map.size (gets $ view entityMgr)
   eMgr <- gets $ view entityMgr
-  entityMgr .= Map.insert currentId e eMgr
+  entityMgr .= Map.insert currentId (eId .~ currentId $ e) eMgr
+  return currentId
 
 
 --------------------------------------------------------------------------------
@@ -36,4 +37,5 @@ popEntity = do
 --------------------------------------------------------------------------------
 -- | Builds an entity manager from a list of entities.
 fromList :: [Entity] -> EntityManager
-fromList ls = Map.fromList (zip [1..] ls)
+fromList ls = Map.fromList $
+              map (\(cId, e) -> (cId, eId .~ cId $ e)) (zip [0..] ls)

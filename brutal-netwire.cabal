@@ -26,5 +26,9 @@ executable charles1
       SFML-control >= 0.2.0.2,
       lens,
       time,
+      linear,
+      vector,
+      data-default,
+      random,
       transformers,
       containers

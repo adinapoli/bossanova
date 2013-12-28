@@ -1,8 +1,10 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE ExistentialQuantification #-}
 
 module Types where
 
 import Data.Word
+import System.Random
 import Control.Wire
 import Control.Lens hiding (at)
 import Control.Monad.Trans.State
@@ -28,7 +30,8 @@ newtype UIComponent = UIComponent
 
 --------------------------------------------------------------------------------
 data Entity = Entity {
-    _lcomponents :: [LogicComponent]
+    _eId :: Int
+  , _lcomponents :: [LogicComponent]
   , _uicomponents :: [UIComponent]
 }
 
@@ -44,6 +47,7 @@ data GameState = GameState {
   , _frameTime  :: Word64
   , _fps        :: Int
   , _entityMgr  :: EntityManager
+  , _randGen    :: StdGen
 }
 
 

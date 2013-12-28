@@ -7,6 +7,7 @@
 import Prelude hiding ((.), id)
 
 import Control.Wire
+import System.Random
 import Control.Lens hiding (at)
 import qualified SFML.Window as W
 import qualified SFML.Graphics as G
@@ -21,6 +22,7 @@ import qualified Control.Monad as M
 import qualified Data.IntMap.Strict as Map
 import GHC.Float
 import Control.Monad.Trans.State
+import Control.Monad.IO.Class
 import Control.Monad.Trans.Class (lift)
 import Data.Word
 import Data.Time.Clock.POSIX (getPOSIXTime)
@@ -31,6 +33,7 @@ import Types
 import Entities
 import Components
 import Wires
+import Particles
 
 
 --------------------------------------------------------------------------------
@@ -64,8 +67,8 @@ showMenu = do
       menuSpr <- createSprite
       setTexture menuSpr menuTex True
       return (menuSpr, playTxt)
-    (#>) (Entity [] [spriteComponent m always])
-    (#>) (Entity [] [textSizeComponent p glowingText])
+    (#>) (Entity 0 [] [spriteComponent m always])
+    (#>) (Entity 0 [] [textSizeComponent p glowingText])
     showMenuLoop
 
   where
@@ -87,12 +90,15 @@ showMenu = do
         case wantsToPlay of
          Just (W.SFEvtKeyPressed W.KeyReturn _ _ _ _) -> do
             popEntity 
+            popEntity 
             return ()
          _ -> showMenuLoop
 
 
 --------------------------------------------------------------------------------
+initState :: SFML GameState
 initState = do
+    g <- liftIO getStdGen
     let ctxSettings = Just $ W.ContextSettings 24 8 4 3 3
     wnd <- createRenderWindow
            (W.VideoMode 640 480 32)
@@ -100,7 +106,7 @@ initState = do
            [W.SFDefaultStyle]
            ctxSettings
     setFramerateLimit wnd 60
-    return (GameState wnd clockSession_ 0 0 Map.empty)
+    return (GameState wnd clockSession_ 0 0 Map.empty g)
 
 
 ------------------------------------------------------------------------------
@@ -126,15 +132,19 @@ buildEntities = do
       setTexture spr3 text True
       setTextureRect spr3 (G.IntRect 34 1 32 32)
       move spr3 (S.Vec2f 20 300)
-      let e1 = (Entity
+      let e1 = (Entity 0
                [ translateComponent spr challenge1]
                [ spriteComponent spr always]
                )
-          e2 = (Entity
+          e2 = (Entity 0
                []
                [ spriteComponent spr2 blink]
                )
-          player = (Entity
+          e3 = (Entity 0
+               [ emitterComponent (Emitter clockSession_ 0  1 (for 5))]
+               []
+               )
+          player = (Entity 0
                     [ moveComponent spr3 playerKeyboard]
                     [ spriteComponent spr3 always ]
                    )
@@ -160,6 +170,9 @@ gameLoop = do
   gameTime .= sess'
   lift $ display wnd
 
+  -- Update the stdGen
+  randGen .= gameState ^. randGen . to (snd . next)
+
   updateAndDisplayFPS
 
   evt <- lift $ pollEvent wnd
@@ -168,6 +181,7 @@ gameLoop = do
     _ -> gameLoop
 
 
+--------------------------------------------------------------------------------
 updateAndDisplayFPS :: GameMonad ()
 updateAndDisplayFPS = do
   fTime <- gets $ view frameTime
@@ -179,5 +193,4 @@ updateAndDisplayFPS = do
       frameTime .= curTime
       fps .= 0
       liftIO $ putStrLn $ "FPS: " ++ show (fps' + 1)
-    else do
-      fps += 1
+    else fps += 1
