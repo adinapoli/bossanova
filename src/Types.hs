@@ -4,6 +4,7 @@
 module Types where
 
 import Data.Word
+import Linear.V2
 import System.Random
 import Control.Wire
 import Control.Lens hiding (at)
@@ -12,27 +13,46 @@ import Control.Monad.Trans.Class (lift)
 import Control.Monad.SFML
 import qualified SFML.Graphics as G
 import qualified Data.IntMap.Strict as Map
+import qualified Data.Map.Strict as SMap
 
 
+--------------------------------------------------------------------------------
 type GameWire = Wire (Timed NominalDiffTime ()) () GameMonad
+
 
 --------------------------------------------------------------------------------
 type GameMonad = StateT GameState SFML
 
---------------------------------------------------------------------------------
-newtype LogicComponent = LogicComponent
-                         { tick :: GameState -> GameMonad LogicComponent }
 
 --------------------------------------------------------------------------------
-newtype UIComponent = UIComponent
-                      { render :: GameState -> GameMonad UIComponent }
+data Tag =
+    Position
+  | Velocity
+  | Keyboard
+  | Renderable deriving (Show, Ord, Eq)
+
+
+--------------------------------------------------------------------------------
+data Component = Component {
+    _compTag :: Tag
+  , _compData :: ComponentData
+}
+
+
+data ComponentData =
+    Sprite G.Sprite
+  | PosInt (V2 Int)
+  | Unit
+
+
+--------------------------------------------------------------------------------
+newtype System = System { tick :: GameState -> GameMonad System }
 
 
 --------------------------------------------------------------------------------
 data Entity = Entity {
     _eId :: Int
-  , _lcomponents :: [LogicComponent]
-  , _uicomponents :: [UIComponent]
+  , _components :: SMap.Map Tag Component
 }
 
 
@@ -48,10 +68,12 @@ data GameState = GameState {
   , _fps        :: Int
   , _entityMgr  :: EntityManager
   , _randGen    :: StdGen
+  , _systems    :: [System]
 }
 
 
 --------------------------------------------------------------------------------
 $(makeLenses ''GameState)
 $(makeLenses ''Entity)
+$(makeLenses ''Component)
 $(makeLensesFor [("transform", "l_transform")] ''G.RenderStates)

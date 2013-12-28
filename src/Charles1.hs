@@ -7,6 +7,7 @@
 import Prelude hiding ((.), id)
 
 import Control.Wire
+import Linear.V2
 import System.Random
 import Control.Lens hiding (at)
 import qualified SFML.Window as W
@@ -20,6 +21,7 @@ import SFML.Graphics.Color
 import Control.Monad hiding (when)
 import qualified Control.Monad as M
 import qualified Data.IntMap.Strict as Map
+import qualified Data.Map.Strict as SMap
 import GHC.Float
 import Control.Monad.Trans.State
 import Control.Monad.IO.Class
@@ -34,6 +36,7 @@ import Entities
 import Components
 import Wires
 import Particles
+import Systems
 
 
 --------------------------------------------------------------------------------
@@ -44,7 +47,7 @@ main :: IO ()
 main =  runSFML $ do
       gameState  <- initState
       flip evalStateT gameState $ do
-        showMenu
+        --showMenu
         buildEntities
         gameLoop
 
@@ -67,8 +70,8 @@ showMenu = do
       menuSpr <- createSprite
       setTexture menuSpr menuTex True
       return (menuSpr, playTxt)
-    (#>) (Entity 0 [] [spriteComponent m always])
-    (#>) (Entity 0 [] [textSizeComponent p glowingText])
+    --(#>) (Entity 0 [] [spriteComponent m always])
+    --(#>) (Entity 0 [] [textSizeComponent p glowingText])
     showMenuLoop
 
   where
@@ -79,7 +82,7 @@ showMenu = do
         lift $ clearRenderWindow win white
 
         -- Update the world
-        mapM_ updateComponents (Map.keys eMgr)
+        --mapM_ updateComponents (Map.keys eMgr)
 
         -- Update the game state
         (dt, sess') <- stepSession sess
@@ -106,7 +109,17 @@ initState = do
            [W.SFDefaultStyle]
            ctxSettings
     setFramerateLimit wnd 60
-    return (GameState wnd clockSession_ 0 0 Map.empty g)
+    return GameState {
+        _gameWin    = wnd
+      , _gameTime   = clockSession_
+      , _frameTime  = 0
+      , _fps        = 0
+      , _entityMgr  = Map.empty
+      , _randGen    = g
+      , _systems    =
+        [ inputSystem playerKeyboard
+        , rendererSystem always]
+    }
 
 
 ------------------------------------------------------------------------------
@@ -127,26 +140,26 @@ buildEntities = do
       spr2 <- createSprite
       setTexture spr2 text True
       setTextureRect spr2 (G.IntRect 1 1 32 32)
-      move spr2 (S.Vec2f 400 300)
       spr3 <- createSprite
       setTexture spr3 text True
       setTextureRect spr3 (G.IntRect 34 1 32 32)
-      move spr3 (S.Vec2f 20 300)
       let e1 = (Entity 0
-               [ translateComponent spr challenge1]
-               [ spriteComponent spr always]
-               )
+                 (SMap.fromList
+                   [(Renderable, sprite spr)
+                   ,(Position, position 100 100)
+                   ]))
           e2 = (Entity 0
-               []
-               [ spriteComponent spr2 blink]
-               )
-          e3 = (Entity 0
-               [ emitterComponent (Emitter clockSession_ 0  1 (for 5))]
-               []
-               )
+                 (SMap.fromList
+                   [(Renderable, sprite spr2)
+                   ,(Position, position 400 300)
+                   ]))
           player = (Entity 0
-                    [ moveComponent spr3 playerKeyboard]
-                    [ spriteComponent spr3 always ]
+                    (SMap.fromList 
+                      [(Renderable, sprite spr3)
+                      ,(Position, position 20 300)
+                      ,(Keyboard, keyboard)
+                      ]
+                    )
                    )
        in return [e1, e2, player]
     entityMgr .= fromList ent
@@ -160,10 +173,12 @@ gameLoop = do
   sess <- gets $ view gameTime
   wnd  <- gets $ view gameWin
   eMgr <- gets $ view entityMgr
+  sys  <- gets $ view systems
   lift $ clearRenderWindow wnd yellow
 
   -- Update the world
-  mapM_ updateComponents (Map.keys eMgr)
+  newSystems <- mapM (\(System fn) -> fn gameState) sys
+  systems .= newSystems
 
   -- Update the game state
   (dt, sess') <- stepSession sess
@@ -172,6 +187,7 @@ gameLoop = do
 
   -- Update the stdGen
   randGen .= gameState ^. randGen . to (snd . next)
+
 
   updateAndDisplayFPS
 
