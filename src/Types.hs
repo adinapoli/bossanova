@@ -29,6 +29,7 @@ data Tag =
     Position
   | Velocity
   | Keyboard
+  | AffectRendering
   | Renderable deriving (Show, Ord, Eq)
 
 
@@ -42,11 +43,12 @@ data Component = Component {
 data ComponentData =
     Sprite G.Sprite
   | PosInt (V2 Int)
-  | Unit
+  | MustRenderWire (GameWire NominalDiffTime Bool)
+  | PlKbWire (GameWire NominalDiffTime (V2 Int))
 
 
 --------------------------------------------------------------------------------
-newtype System = System { tick :: GameState -> GameMonad System }
+newtype System = System { tick :: GameMonad () }
 
 
 --------------------------------------------------------------------------------

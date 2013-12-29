@@ -116,9 +116,10 @@ initState = do
       , _fps        = 0
       , _entityMgr  = Map.empty
       , _randGen    = g
-      , _systems    =
-        [ inputSystem playerKeyboard
-        , rendererSystem always]
+      , _systems    = [
+          rendererSystem
+        , inputSystem
+        ]
     }
 
 
@@ -152,12 +153,14 @@ buildEntities = do
                  (SMap.fromList
                    [(Renderable, sprite spr2)
                    ,(Position, position 400 300)
+                   ,(AffectRendering, blink 1 2)
                    ]))
           player = (Entity 0
                     (SMap.fromList 
                       [(Renderable, sprite spr3)
+                      ,(AffectRendering, blink 0.5 0.7)
                       ,(Position, position 20 300)
-                      ,(Keyboard, keyboard)
+                      ,(Keyboard, keyboard playerKeyboard)
                       ]
                     )
                    )
@@ -177,17 +180,15 @@ gameLoop = do
   lift $ clearRenderWindow wnd yellow
 
   -- Update the world
-  newSystems <- mapM (\(System fn) -> fn gameState) sys
-  systems .= newSystems
+  forM_ sys tick
 
   -- Update the game state
-  (dt, sess') <- stepSession sess
+  (_, sess') <- stepSession sess
   gameTime .= sess'
   lift $ display wnd
 
   -- Update the stdGen
   randGen .= gameState ^. randGen . to (snd . next)
-
 
   updateAndDisplayFPS
 

@@ -23,17 +23,18 @@ import Components
 
 
 --------------------------------------------------------------------------------
-newtonianSystem :: GameWire NominalDiffTime NominalDiffTime -> System
-newtonianSystem wire = System $ \GameState{..} -> do
+newtonianSystem :: System
+newtonianSystem = System $ do
   sess <- gets $ view gameTime
+  eMgr <- gets $ view entityMgr
   (dt, sess') <- stepSession sess
-  (res, wire') <- stepWire wire dt (Right (dtime dt))
-  case res of
+  --(res, wire') <- stepWire wire dt (Right (dtime dt))
+  case Left () of
     Right v -> do
-      let allEntities = Map.elems _entityMgr
+      let allEntities = Map.elems eMgr
       mapM_ updateSingle allEntities
-      return $ newtonianSystem wire'
-    Left  _ -> return $ newtonianSystem wire'
+      return ()
+    Left  _ -> return ()
   where
     updateSingle :: Entity -> GameMonad ()
     updateSingle e = return () -- TODO
@@ -42,20 +43,30 @@ newtonianSystem wire = System $ \GameState{..} -> do
 
 --------------------------------------------------------------------------------
 -- Render and display the sprite in the current position.
-rendererSystem :: GameWire NominalDiffTime Bool -> System
-rendererSystem wire = System $ \GameState{..} -> do
-  sess <- gets $ view gameTime
-  (dt, sess') <- stepSession sess
-  (res, wire') <- stepWire wire dt (Right (dtime dt))
-  case res of
-    Right v -> do
-      let allEntities = Map.elems _entityMgr
-      mapM_ updateSingle allEntities
-      return $ rendererSystem wire'
-    Left  _ -> return $ rendererSystem wire'
+-- TODO: Multicast for renderables?
+-- e.g. blink
+rendererSystem :: System
+rendererSystem = System $ do
+  eMgr <- gets $ view entityMgr
+  let allEntities = Map.elems eMgr
+  mapM_ updateSingle allEntities
+  return ()
   where
     updateSingle :: Entity -> GameMonad ()
     updateSingle e = let comp = _components e in
+      case (SMap.lookup AffectRendering comp) of
+        Just (Component _ (MustRenderWire w)) -> do
+          sess <- gets $ view gameTime
+          (dt, sess') <- stepSession sess
+          (res, wire') <- stepWire w dt (Right (dtime dt))
+          let newC = Component AffectRendering (MustRenderWire wire')
+          e #.= newC
+          case res of
+            Right _ -> updateSprite comp
+            Left  _ -> return ()
+        _ -> updateSprite comp
+
+    updateSprite comp =
       case liftM2 (,)
            (SMap.lookup Renderable comp)
            (SMap.lookup Position comp) of
@@ -68,24 +79,38 @@ rendererSystem wire = System $ \GameState{..} -> do
 
 
 --------------------------------------------------------------------------------
-inputSystem :: GameWire NominalDiffTime (Int, Int) -> System
-inputSystem wire = System $ \GameState{..} -> do
-  sess <- gets $ view gameTime
-  (dt, sess') <- stepSession sess
-  (res, wire') <- stepWire wire dt (Right (dtime dt))
-  case res of
-    Right (dx, dy) -> do
-      let allEntities = Map.elems _entityMgr
-      mapM_ (updateSingle dx dy) allEntities
-      return $ inputSystem wire'
-    Left  _ -> return $ inputSystem wire'
+inputSystem :: System
+inputSystem = System $ do
+  eMgr <- gets $ view entityMgr
+  let allEntities = Map.elems eMgr
+  mapM_ updateSingle allEntities
+  return ()
   where
-    updateSingle :: Int -> Int -> Entity -> GameMonad ()
-    updateSingle dx dy e = let comp = _components e in
+    updateSingle :: Entity -> GameMonad ()
+    updateSingle e = let comp = _components e in
       case liftM2 (,) (SMap.lookup Keyboard comp) (SMap.lookup Position comp) of
-        Just (_, c@(Component _ (PosInt oldPos))) -> do
-         eMgr <- gets $ view entityMgr
-         let newC = compData .~ PosInt (oldPos + V2 dx dy) $ c
-         let newE = components .~ SMap.insert Position newC comp $ e
-         entityMgr .= Map.insert (_eId newE) newE eMgr
+        Just (k@(Component _ (PlKbWire w)),
+              c@(Component _ (PosInt oldPos))) -> do
+         sess <- gets $ view gameTime
+         (dt, sess') <- stepSession sess
+         (res, wire') <- stepWire w dt (Right (dtime dt))
+         case res of
+           Right ds -> do
+             updateKbWire wire' k e
+             let newC = compData .~ PosInt (oldPos + ds) $ c
+             e #.= newC
+           Left  _  -> updateKbWire wire' k e
         _ -> return ()
+
+    updateKbWire wire k e = do
+      let newK = compData .~ PlKbWire wire $ k
+      e #.= newK
+
+
+--------------------------------------------------------------------------------
+(#.=) :: Entity -> Component -> GameMonad ()
+ent #.= newC = do
+  eMgr <- gets $ view entityMgr
+  let tg = _compTag newC
+  let newE = components .~ SMap.insert tg newC (_components ent) $ ent
+  entityMgr .= Map.insert (_eId newE) newE eMgr

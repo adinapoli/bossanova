@@ -19,6 +19,7 @@ import qualified Data.IntMap.Strict as Map
 
 import Types
 import Particles
+import Wires
 
 --------------------------------------------------------------------------------
 sprite :: G.Sprite -> Component
@@ -26,15 +27,22 @@ sprite = Component Renderable . Sprite
 
 
 --------------------------------------------------------------------------------
+blink :: NominalDiffTime -> NominalDiffTime -> Component
+blink cooldown blinkTime =
+  Component AffectRendering (MustRenderWire (blinkWire cooldown blinkTime))
+
+
+--------------------------------------------------------------------------------
 position :: Int -> Int -> Component
 position x y = Component Position (PosInt (V2 x y))
 
 
+--------------------------------------------------------------------------------
 translationFromV2 :: V2 Int -> G.RenderStates
 translationFromV2 (V2 x y) = G.renderStates {
   G.transform = G.translation (fromIntegral x) (fromIntegral y)
   }
 
 --------------------------------------------------------------------------------
-keyboard :: Component
-keyboard = Component Keyboard Unit
+keyboard :: GameWire NominalDiffTime (V2 Int) -> Component
+keyboard wire = Component Keyboard (PlKbWire wire)
