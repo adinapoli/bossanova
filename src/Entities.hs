@@ -1,5 +1,6 @@
 module Entities where
 
+import Prelude hiding ((.))
 import Control.Wire
 import Control.Lens hiding (at)
 import Control.Monad.Trans.State
@@ -22,9 +23,9 @@ import Types
 --------------------------------------------------------------------------------
 -- | Delete an entity.
 (#~) :: Int -> GameMonad ()
-(#~) eId = do
+(#~) e = do
   eMgr <- gets $ view entityMgr
-  entityMgr .= Map.delete eId eMgr
+  entityMgr .= Map.delete e eMgr
 
 --------------------------------------------------------------------------------
 -- | Delete the last entity.
@@ -39,3 +40,13 @@ popEntity = do
 fromList :: [Entity] -> EntityManager
 fromList ls = Map.fromList $
               map (\(cId, e) -> (cId, eId .~ cId $ e)) (zip [0..] ls)
+
+
+--------------------------------------------------------------------------------
+-- This should be accomplished by an "Alias manager", but it would be
+-- brittle to keep in sync it with the entityMgr.
+-- this method call is slow as it takes O(n).
+getByAlias :: Alias -> GameMonad [Entity]
+getByAlias a = do
+  eMgr <- gets $ view entityMgr
+  return . map snd . Map.toList . Map.filter (\v -> v ^. alias == Just a) $ eMgr

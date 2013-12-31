@@ -1,30 +1,21 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DoAndIfThenElse #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE RecordWildCards #-}
 
 import Prelude hiding ((.), id)
 
 import Control.Wire
-import Linear.V2
 import System.Random
 import Control.Lens hiding (at)
 import qualified SFML.Window as W
 import qualified SFML.Graphics as G
-import qualified SFML.System as S
 import Control.Monad.SFML
 import Control.Monad.SFML.Graphics
-import Control.Monad.SFML.Window
-import Control.Monad.SFML.System
 import SFML.Graphics.Color
 import Control.Monad hiding (when)
-import qualified Control.Monad as M
 import qualified Data.IntMap.Strict as Map
 import qualified Data.Map.Strict as SMap
-import GHC.Float
 import Control.Monad.Trans.State
-import Control.Monad.IO.Class
 import Control.Monad.Trans.Class (lift)
 import Data.Word
 import Data.Time.Clock.POSIX (getPOSIXTime)
@@ -35,7 +26,6 @@ import Types
 import Entities
 import Components
 import Wires
-import Particles
 import Systems
 
 
@@ -44,12 +34,17 @@ import Systems
 -- | not worring about resource alloc/dealloc. Atm everything is retained in
 -- memory.
 main :: IO ()
-main =  runSFML $ do
+main = runSFML $ do
       gameState  <- initState
+      runAndDealloc gameState showMenu
       flip evalStateT gameState $ do
-        --showMenu
         buildEntities
         gameLoop
+
+
+--------------------------------------------------------------------------------
+runAndDealloc :: GameState -> GameMonad a -> SFML ()
+runAndDealloc st action = liftIO $ runSFML $ evalStateT action st
 
 
 --------------------------------------------------------------------------------
@@ -61,17 +56,24 @@ showMenu = do
       fnt <- fontFromFile "resources/ProFont.ttf"
       setTextFont playTxt fnt
       setTextString playTxt "Press Enter to play!"
-      setTextCharacterSize playTxt 20
-      setTextColor playTxt white
-      setPosition playTxt (S.Vec2f 200 430)
       menuTex <- textureFromFile
                  "resources/menu.png"
                  (Just $ G.IntRect 0 0 640 480)
       menuSpr <- createSprite
       setTexture menuSpr menuTex True
       return (menuSpr, playTxt)
-    --(#>) (Entity 0 [] [spriteComponent m always])
-    --(#>) (Entity 0 [] [textSizeComponent p glowingText])
+    (#>) (Entity 0 Nothing
+         (SMap.fromList [
+                     (Renderable, sprite m)
+                   , (Position, position 0 0)
+                   ]))
+    (#>) (Entity 0 Nothing
+         (SMap.fromList [
+                     (Renderable, text p)
+                   , (Size, intSize 20)
+                   , (Colour, colour white)
+                   , (Position, position 200 430)
+                   ]))
     showMenuLoop
 
   where
@@ -79,10 +81,11 @@ showMenu = do
         win <- gets $ view gameWin
         sess <- gets $ view gameTime
         eMgr <- gets $ view entityMgr
+        sys <- gets $ view systems
         lift $ clearRenderWindow win white
 
         -- Update the world
-        --mapM_ updateComponents (Map.keys eMgr)
+        forM_ sys tick
 
         -- Update the game state
         (dt, sess') <- stepSession sess
@@ -117,8 +120,10 @@ initState = do
       , _entityMgr  = Map.empty
       , _randGen    = g
       , _systems    = [
-          rendererSystem
-        , inputSystem
+          inputSystem
+        , textSizeSystem
+        , textColourSystem
+        , rendererSystem
         ]
     }
 
@@ -133,40 +138,49 @@ milliTime = do
 ------------------------------------------------------------------------------
 buildEntities :: GameMonad ()
 buildEntities = do
-    ent <- lift $ do
-      spr <- createSprite
-      text <- textureFromFile "resources/sprites.png" Nothing
-      setTexture spr text True
-      setTextureRect spr (G.IntRect 1 1 32 32)
-      spr2 <- createSprite
-      setTexture spr2 text True
-      setTextureRect spr2 (G.IntRect 1 1 32 32)
-      spr3 <- createSprite
-      setTexture spr3 text True
-      setTextureRect spr3 (G.IntRect 34 1 32 32)
-      let e1 = (Entity 0
-                 (SMap.fromList
-                   [(Renderable, sprite spr)
-                   ,(Position, position 100 100)
+    entityMgr .= Map.empty
+    spr <- lift createSprite
+    tex <- lift $ textureFromFile "resources/sprites.png" Nothing
+    lift $ setTexture spr tex True
+    lift $ setTextureRect spr (G.IntRect 1 1 32 32)
+    spr2 <- lift createSprite
+    lift $ setTexture spr2 tex True
+    lift $ setTextureRect spr2 (G.IntRect 1 1 32 32)
+    spr3 <- lift createSprite
+    lift $ setTexture spr3 tex True
+    lift $ setTextureRect spr3 (G.IntRect 34 1 32 32)
+    t <- lift createText
+    fnt <- lift $ fontFromFile "resources/ProFont.ttf"
+    lift $ setTextFont t fnt
+    lift $ setTextString t "FOO"
+    (#>) (Entity 0 Nothing
+               (SMap.fromList
+                 [(Renderable, sprite spr)
+                 ,(Position, position 100 100)
+                 ]))
+    (#>) (Entity 0 Nothing
+               (SMap.fromList
+                 [(Renderable, sprite spr2)
+                 ,(Position, position 400 300)
+                 ,(AffectRendering, blink 1 2)
+                 ]))
+    (#>) (Entity 0 Nothing
+               (SMap.fromList 
+                 [(Renderable, sprite spr3)
+                 ,(Position, position 20 300)
+                 ,(Keyboard, keyboard playerKeyboard)
+                 ]
+               ))
+    (#>) (Entity 0 (Just "PointCounter")
+         (SMap.fromList [
+                     (Renderable, text t)
+                   , (Size, intSize 20)
+                   , (Colour, colour red)
+                   , (EventListener, onEvents [PlayerMoved])
+                   , (EventHolder, eventQueue)
+                   , (Position, position 400 40)
                    ]))
-          e2 = (Entity 0
-                 (SMap.fromList
-                   [(Renderable, sprite spr2)
-                   ,(Position, position 400 300)
-                   ,(AffectRendering, blink 1 2)
-                   ]))
-          player = (Entity 0
-                    (SMap.fromList 
-                      [(Renderable, sprite spr3)
-                      ,(AffectRendering, blink 0.5 0.7)
-                      ,(Position, position 20 300)
-                      ,(Keyboard, keyboard playerKeyboard)
-                      ]
-                    )
-                   )
-       in return [e1, e2, player]
-    entityMgr .= fromList ent
-
+    return ()
 
 
 --------------------------------------------------------------------------------
@@ -175,7 +189,6 @@ gameLoop = do
   gameState <- get
   sess <- gets $ view gameTime
   wnd  <- gets $ view gameWin
-  eMgr <- gets $ view entityMgr
   sys  <- gets $ view systems
   lift $ clearRenderWindow wnd yellow
 

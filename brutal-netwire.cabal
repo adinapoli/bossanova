@@ -31,4 +31,5 @@ executable charles1
       data-default,
       random,
       transformers,
-      containers
+      containers,
+      stm
