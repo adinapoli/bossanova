@@ -3,12 +3,14 @@ module Events where
 import Prelude hiding ((.))
 import Control.Wire hiding (at)
 import Control.Lens
-import Control.Monad.Trans.State
+import Control.Monad
 import qualified SFML.Graphics as G
+import Safe hiding (at)
 
 import Types
 import Systems
 import Wires
+import Entities
 
 
 --------------------------------------------------------------------------------
@@ -17,16 +19,17 @@ updateCaption :: Show a
               -> Entity
               -> GameMonad GameEvent
 updateCaption wire e = do
-  sess <- gets $ view gameTime
-  (dt, _) <- stepSession sess
-  (res, wire') <- stepWire wire dt (Right (dtime dt))
-  case res of
-    Right v -> case comp e ^. at Caption of
-      Just (Component _ (TextCaption _)) -> do
-        let newC = Component Caption (TextCaption (show v))
+  wire' <- stepTimed wire $ \_ -> do
+    pl  <- entityByAlias ThePlayer
+    case liftM2 (,)
+         (headMay pl >>= \e' -> comp e' ^. at Position)
+         (comp e ^. at Caption) of
+      Just ( Component _ (PosInt pos)
+           , Component _ (TextCaption _)) -> do
+        let newC = Component Caption (TextCaption (show pos))
         e #.= newC
-        return $ GameEvent (updateCaption wire')
-    Left _ -> return $ GameEvent (updateCaption wire')
+      Nothing -> return ()
+  return $ GameEvent (updateCaption wire')
 
 
 --------------------------------------------------------------------------------

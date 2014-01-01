@@ -32,4 +32,5 @@ executable charles1
       random,
       transformers,
       containers,
-      stm
+      stm,
+      safe

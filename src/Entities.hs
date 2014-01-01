@@ -46,7 +46,7 @@ fromList ls = Map.fromList $
 -- This should be accomplished by an "Alias manager", but it would be
 -- brittle to keep in sync it with the entityMgr.
 -- this method call is slow as it takes O(n).
-getByAlias :: Alias -> GameMonad [Entity]
-getByAlias a = do
+entityByAlias :: Alias -> GameMonad [Entity]
+entityByAlias a = do
   eMgr <- gets $ view entityMgr
   return . map snd . Map.toList . Map.filter (\v -> v ^. alias == a) $ eMgr
