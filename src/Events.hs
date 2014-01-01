@@ -4,9 +4,11 @@ import Prelude hiding ((.))
 import Control.Wire hiding (at)
 import Control.Lens
 import Control.Monad.Trans.State
-import Control.Monad.SFML
+import qualified SFML.Graphics as G
+
 import Types
 import Systems
+import Wires
 
 
 --------------------------------------------------------------------------------
@@ -19,13 +21,22 @@ updateCaption wire e = do
   (dt, _) <- stepSession sess
   (res, wire') <- stepWire wire dt (Right (dtime dt))
   case res of
-    Right v -> let comp = _components e in
-      case comp ^. at Caption of
-        Just (Component _ (TextCaption _)) -> do
-          let newC = Component Caption (TextCaption (show v))
-          e #.= newC
-          case (_components e) ^. at Caption of
-            Just (Component _ (TextCaption cap)) -> liftIO $ print cap
-            Nothing -> return ()
-          return $ GameEvent (updateCaption wire')
+    Right v -> case comp e ^. at Caption of
+      Just (Component _ (TextCaption _)) -> do
+        let newC = Component Caption (TextCaption (show v))
+        e #.= newC
+        return $ GameEvent (updateCaption wire')
     Left _ -> return $ GameEvent (updateCaption wire')
+
+
+--------------------------------------------------------------------------------
+updateColour :: GameWire NominalDiffTime a
+             -> Entity
+             -> GameMonad GameEvent
+updateColour wire e = do
+  wire' <- stepTimed wire $ \_ ->
+    case comp e ^. at Colour of
+      Just (Component _ (RenderColour col)) -> if col == G.blue
+           then e #.= Component Colour (RenderColour G.magenta)
+           else e #.= Component Colour (RenderColour G.blue)
+  return $ GameEvent (updateColour wire')

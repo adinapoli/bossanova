@@ -50,9 +50,11 @@ moveLeft = ifPressedGo W.KeyA (V2 (-5) 0)
 moveRight :: GameWire NominalDiffTime (V2 Int)
 moveRight = ifPressedGo W.KeyD (V2 5 0)
 
+
 --------------------------------------------------------------------------------
 moveUp :: GameWire NominalDiffTime (V2 Int)
 moveUp = ifPressedGo W.KeyW (V2 0 (-5))
+
 
 --------------------------------------------------------------------------------
 moveDown :: GameWire NominalDiffTime (V2 Int)
@@ -66,7 +68,6 @@ playerKeyboard = moveLeft <|>
                  moveUp <|> 
                  moveDown <|>
                  inhibit ()
-
 
 
 --------------------------------------------------------------------------------
@@ -96,3 +97,13 @@ glowingText = for 0.5 . pure 20 -->
 --        res <- T.mapM (\w -> stepWire w dt x') ws'
 --        let resx = T.sequence . fmap (\(mx, w) -> fmap (, w) mx) $ res
 --        return (fmap (fmap fst) resx, multicast (fmap snd res))
+
+
+stepTimed :: GameWire NominalDiffTime b
+          -> (b -> GameMonad c)
+          -> GameMonad (GameWire NominalDiffTime b)
+stepTimed wire fn = do
+  sess <- gets $ view gameTime
+  (dt, _) <- stepSession sess
+  (res, wire') <- stepWire wire dt (Right (dtime dt))
+  either (const $ return wire') (\v -> fn v >> return wire') res

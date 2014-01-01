@@ -9,9 +9,7 @@ import System.Random
 import Control.Wire
 import Control.Lens hiding (at)
 import Control.Monad.Trans.State
-import Control.Monad.Trans.Class (lift)
 import Control.Monad.SFML
-import Control.Concurrent.STM
 import qualified SFML.Graphics as G
 import qualified Data.IntMap.Strict as Map
 import qualified Data.Map.Strict as SMap
@@ -69,13 +67,16 @@ type Components = SMap.Map Tag Component
 
 
 --------------------------------------------------------------------------------
-type Alias = String
+data Alias =
+    NoAlias
+  | ThePlayer
+  | PointCounter deriving (Show, Eq)
 
 
 --------------------------------------------------------------------------------
 data Entity = Entity {
     _eId :: Int
-  , _alias :: Maybe Alias
+  , _alias :: Alias
   , _components :: Components
 }
 

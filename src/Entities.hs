@@ -49,4 +49,4 @@ fromList ls = Map.fromList $
 getByAlias :: Alias -> GameMonad [Entity]
 getByAlias a = do
   eMgr <- gets $ view entityMgr
-  return . map snd . Map.toList . Map.filter (\v -> v ^. alias == Just a) $ eMgr
+  return . map snd . Map.toList . Map.filter (\v -> v ^. alias == a) $ eMgr

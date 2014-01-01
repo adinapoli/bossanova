@@ -63,12 +63,12 @@ showMenu = do
       menuSpr <- createSprite
       setTexture menuSpr menuTex True
       return (menuSpr, playTxt)
-    (#>) (Entity 0 Nothing
+    (#>) (Entity 0 NoAlias
          (SMap.fromList [
                      (Renderable, sprite m)
                    , (Position, position 0 0)
                    ]))
-    (#>) (Entity 0 Nothing
+    (#>) (Entity 0 NoAlias
          (SMap.fromList [
                      (Renderable, text p)
                    , (Size, intSize 20)
@@ -155,32 +155,33 @@ buildEntities = do
     t <- lift createText
     fnt <- lift $ fontFromFile "resources/ProFont.ttf"
     lift $ setTextFont t fnt
-    (#>) (Entity 0 Nothing
+    (#>) (Entity 0 NoAlias
                (SMap.fromList
                  [(Renderable, sprite spr)
                  ,(Position, position 100 100)
                  ]))
-    (#>) (Entity 0 Nothing
+    (#>) (Entity 0 NoAlias
                (SMap.fromList
                  [(Renderable, sprite spr2)
                  ,(Position, position 400 300)
                  ,(AffectRendering, blink 1 2)
                  ]))
-    (#>) (Entity 0 (Just "ThePlayer")
+    (#>) (Entity 0 ThePlayer
                (SMap.fromList 
                  [ (Renderable, sprite spr3)
                  , (Position, position 20 300)
                  , (Keyboard, keyboard playerKeyboard)
                  ]
                ))
-    (#>) (Entity 0 (Just "PointCounter")
+    (#>) (Entity 0 PointCounter
          (SMap.fromList [
                      (Renderable, text t)
                    , (Size, intSize 20)
                    , (Colour, colour red)
-                   , (Caption, textCaption "Sei mejo te")
+                   , (Caption, textCaption "Move the player to update")
                    , (EventListener, onEvents [
-                     GameEvent (updateCaption playerKeyboard)
+                       GameEvent (updateCaption playerKeyboard)
+                     , GameEvent (updateColour  (blinkWire 1 2))
                    ])
                    , (Position, position 400 40)
                    ]))
