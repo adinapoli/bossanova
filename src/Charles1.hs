@@ -27,6 +27,7 @@ import Entities
 import Components
 import Wires
 import Systems
+import Events
 
 
 --------------------------------------------------------------------------------
@@ -123,7 +124,9 @@ initState = do
           inputSystem
         , textSizeSystem
         , textColourSystem
+        , textCaptionSystem
         , rendererSystem
+        , eventSystem
         ]
     }
 
@@ -152,7 +155,6 @@ buildEntities = do
     t <- lift createText
     fnt <- lift $ fontFromFile "resources/ProFont.ttf"
     lift $ setTextFont t fnt
-    lift $ setTextString t "FOO"
     (#>) (Entity 0 Nothing
                (SMap.fromList
                  [(Renderable, sprite spr)
@@ -164,11 +166,11 @@ buildEntities = do
                  ,(Position, position 400 300)
                  ,(AffectRendering, blink 1 2)
                  ]))
-    (#>) (Entity 0 Nothing
+    (#>) (Entity 0 (Just "ThePlayer")
                (SMap.fromList 
-                 [(Renderable, sprite spr3)
-                 ,(Position, position 20 300)
-                 ,(Keyboard, keyboard playerKeyboard)
+                 [ (Renderable, sprite spr3)
+                 , (Position, position 20 300)
+                 , (Keyboard, keyboard playerKeyboard)
                  ]
                ))
     (#>) (Entity 0 (Just "PointCounter")
@@ -176,8 +178,10 @@ buildEntities = do
                      (Renderable, text t)
                    , (Size, intSize 20)
                    , (Colour, colour red)
-                   , (EventListener, onEvents [PlayerMoved])
-                   , (EventHolder, eventQueue)
+                   , (Caption, textCaption "Sei mejo te")
+                   , (EventListener, onEvents [
+                     GameEvent (updateCaption playerKeyboard)
+                   ])
                    , (Position, position 400 40)
                    ]))
     return ()

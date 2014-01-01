@@ -30,6 +30,10 @@ text :: G.Text -> Component
 text = Component Renderable . Text
 
 --------------------------------------------------------------------------------
+textCaption :: String -> Component
+textCaption = Component Caption . TextCaption
+
+--------------------------------------------------------------------------------
 intSize :: Int -> Component
 intSize = Component Size . SizeInt
 
@@ -61,10 +65,5 @@ keyboard wire = Component Keyboard (PlKbWire wire)
 
 
 --------------------------------------------------------------------------------
-onEvents :: [EventType] -> Component
-onEvents = Component EventListener . RelevantEvents
-
-
---------------------------------------------------------------------------------
-eventQueue :: Component
-eventQueue = Component EventHolder (Events Uninitialized)
+onEvents :: [GameEvent] -> Component
+onEvents = Component EventListener . Events

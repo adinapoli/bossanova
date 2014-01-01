@@ -58,9 +58,9 @@ textSizeSystem = System $ do
           lift $ setTextCharacterSize t sz
         _ -> return ()
 
-
-eventQueueInitializerSystem :: System
-eventQueueInitializerSystem = System $ do
+--------------------------------------------------------------------------------
+textCaptionSystem :: System
+textCaptionSystem = System $ do
   eMgr <- gets $ view entityMgr
   let allEntities = Map.elems eMgr
   mapM_ updateSingle allEntities
@@ -68,12 +68,11 @@ eventQueueInitializerSystem = System $ do
   where
     updateSingle :: Entity -> GameMonad ()
     updateSingle e = let comp = _components e in
-      case comp ^. at EventHolder of
-        Just (Component _ (Events Uninitialized)) -> do
-          newQueue <- liftIO newTQueueIO
-          let newC = Component EventHolder (Events (Initialized newQueue))
-          e #.= newC
+      case liftM2 (,) (comp ^. at Renderable) (comp ^. at Caption) of
+        Just (Component _ (Text t),
+              Component _ (TextCaption cap)) -> lift $ setTextString t cap
         _ -> return ()
+
 
 --------------------------------------------------------------------------------
 eventSystem :: System
@@ -84,19 +83,16 @@ eventSystem = System $ do
   return ()
   where
     updateSingle :: Entity -> GameMonad ()
-    updateSingle e = let comp = _components e in
-      case liftM2 (,)
-           (comp ^. at EventHolder)
-           (comp ^. at EventListener) of
-        Just ( Component _ (Events (Initialized eQueue))
-             , Component _ (RelevantEvents evtTypes)) -> do
-          nextEvt <- liftIO $ atomically (tryReadTQueue eQueue)
-          case nextEvt of
-            Just e' -> when (_evtType e' `elem` evtTypes) ((e' ^. evtAction) e)
-            _ -> return ()
-            
+    updateSingle e = case (comp e) ^. at EventListener of
+        Just (Component _ (Events evts)) -> do
+          steppedEvts <- forM evts $ \(GameEvent fn) -> fn e
+          let newC = Component EventListener (Events steppedEvts)
+          e #.= newC
         Nothing -> return ()
 
+
+comp :: Entity -> Components
+comp = _components
 
 --------------------------------------------------------------------------------
 textColourSystem :: System
@@ -199,9 +195,16 @@ inputSystem = System $ do
 
 
 --------------------------------------------------------------------------------
+-- Common pitfall: Once you update the entity you must ask the entityManager
+-- for the new entity again, since everything is immutable. To avoid this, we
+-- don't update the entity directly, but we just use its ID to fetch the entity
+-- from the EntityManager.
 (#.=) :: Entity -> Component -> GameMonad ()
 ent #.= newC = do
   eMgr <- gets $ view entityMgr
-  let tg = _compTag newC
-  let newE = components .~ SMap.insert tg newC (_components ent) $ ent
-  entityMgr .= Map.insert (_eId newE) newE eMgr
+  case eMgr ^. at (_eId ent) of
+    Just oldE -> do
+      let tg = _compTag newC
+      let newE = components .~ SMap.insert tg newC (_components oldE) $ ent
+      entityMgr .= Map.insert (_eId newE) newE eMgr
+    Nothing -> return ()

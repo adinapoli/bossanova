@@ -32,9 +32,11 @@ data Tag =
   | Keyboard
   | AffectRendering
   | EventListener
+  | EventPublisher
   | EventHolder
   | Size
   | Colour
+  | Caption
   | Renderable deriving (Show, Ord, Eq)
 
 
@@ -46,18 +48,13 @@ data Component = Component {
 
 
 --------------------------------------------------------------------------------
-data GameEventQueue = 
-  Uninitialized | Initialized (TQueue GameEvent)
-
-
---------------------------------------------------------------------------------
 data ComponentData =
     Sprite G.Sprite
   | Text G.Text
+  | TextCaption String
   | SizeInt Int
   | RenderColour G.Color
-  | RelevantEvents [EventType]
-  | Events GameEventQueue
+  | Events [GameEvent]
   | PosInt (V2 Int)
   | MustRenderWire (GameWire NominalDiffTime Bool)
   | PlKbWire (GameWire NominalDiffTime (V2 Int))
@@ -82,16 +79,10 @@ data Entity = Entity {
   , _components :: Components
 }
 
---------------------------------------------------------------------------------
-data EventType = 
-  PlayerMoved deriving (Eq, Ord)
-
 
 --------------------------------------------------------------------------------
-data GameEvent = GameEvent {
-    _evtType :: EventType
-  , _evtAction  :: Entity -> GameMonad ()
-}
+newtype GameEvent = GameEvent { runEvent :: Entity -> GameMonad GameEvent }
+
 
 
 --------------------------------------------------------------------------------
