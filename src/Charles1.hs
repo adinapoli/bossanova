@@ -51,7 +51,6 @@ runAndDealloc st action = liftIO $ runSFML $ evalStateT action st
 --------------------------------------------------------------------------------
 showMenu :: GameMonad ()
 showMenu = do
-    win <- gets $ view gameWin
     (m, p) <- lift $ do
       playTxt <- createText
       fnt <- fontFromFile "resources/ProFont.ttf"
@@ -73,6 +72,9 @@ showMenu = do
                      (Renderable, text p)
                    , (Size, intSize 20)
                    , (Colour, colour white)
+                   , (EventListener, onEvents [
+                      GameEvent (toggleColour white gray (blinkWire 1 2))
+                   ])
                    , (Position, position 200 430)
                    ]))
     showMenuLoop
@@ -181,7 +183,7 @@ buildEntities = do
                    , (Caption, textCaption "Move the player to update")
                    , (EventListener, onEvents [
                        GameEvent (updateCaption playerKeyboard)
-                     , GameEvent (updateColour  (blinkWire 1 2))
+                     , GameEvent (toggleColour red green (blinkWire 1 2))
                    ])
                    , (Position, position 400 40)
                    ]))

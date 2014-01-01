@@ -108,3 +108,6 @@ $(makeLenses ''Entity)
 $(makeLenses ''Component)
 $(makeLenses ''GameEvent)
 $(makeLensesFor [("transform", "l_transform")] ''G.RenderStates)
+
+gray :: G.Color
+gray = G.Color 20 20 20 255

@@ -83,22 +83,7 @@ glowingText = for 0.5 . pure 20 -->
               glowingText
 
 
--- | Broadcast the input signal to all of the given wires collecting
--- their results.  Each of the given subwires is evolved individually.
---
--- * Depends: like the most dependent subwire.
---
--- * Inhibits: when any of the subwires inhibits.
---multicast :: (Monad m, T.Traversable f)
---          => f (Wire s e m a b)
---          -> Wire s e m a (f b)
---multicast ws' =
---    mkGen $ \dt x' -> do
---        res <- T.mapM (\w -> stepWire w dt x') ws'
---        let resx = T.sequence . fmap (\(mx, w) -> fmap (, w) mx) $ res
---        return (fmap (fmap fst) resx, multicast (fmap snd res))
-
-
+--------------------------------------------------------------------------------
 stepTimed :: GameWire NominalDiffTime b
           -> (b -> GameMonad c)
           -> GameMonad (GameWire NominalDiffTime b)
@@ -107,3 +92,17 @@ stepTimed wire fn = do
   (dt, _) <- stepSession sess
   (res, wire') <- stepWire wire dt (Right (dtime dt))
   either (const $ return wire') (\v -> fn v >> return wire') res
+
+
+--------------------------------------------------------------------------------
+stepTimed' :: GameWire NominalDiffTime b
+          -> (b -> GameMonad c)
+          -> (() -> GameMonad d)
+          -> GameMonad (GameWire NominalDiffTime b)
+stepTimed' wire ok ko = do
+  sess <- gets $ view gameTime
+  (dt, _) <- stepSession sess
+  (res, wire') <- stepWire wire dt (Right (dtime dt))
+  case res of
+    Right v -> ok v >> return wire'
+    Left e -> ko e >> return wire'

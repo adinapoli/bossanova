@@ -4,6 +4,7 @@ import Prelude hiding ((.))
 import Control.Wire hiding (at)
 import Control.Lens
 import Control.Monad
+import Control.Monad.Trans.State
 import qualified SFML.Graphics as G
 import Safe hiding (at)
 
@@ -33,13 +34,38 @@ updateCaption wire e = do
 
 
 --------------------------------------------------------------------------------
-updateColour :: GameWire NominalDiffTime a
+updateColour :: G.Color
+             -> GameWire NominalDiffTime a
              -> Entity
              -> GameMonad GameEvent
-updateColour wire e = do
+updateColour targetCol wire e = do
   wire' <- stepTimed wire $ \_ ->
     case comp e ^. at Colour of
-      Just (Component _ (RenderColour col)) -> if col == G.blue
-           then e #.= Component Colour (RenderColour G.magenta)
-           else e #.= Component Colour (RenderColour G.blue)
-  return $ GameEvent (updateColour wire')
+      Just (Component _ (RenderColour _)) ->
+           e #.= Component Colour (RenderColour targetCol)
+  return $ GameEvent (updateColour targetCol wire')
+
+
+--------------------------------------------------------------------------------
+toggleColour :: G.Color
+             -> G.Color
+             -> GameWire NominalDiffTime a
+             -> Entity
+             -> GameMonad GameEvent
+toggleColour startCol endCol wire e = do
+  sess <- gets $ view gameTime
+  (dt, _) <- stepSession sess
+  (res, wire') <- stepWire wire dt (Right (dtime dt))
+  case res of
+    Right _ -> do
+      case comp e ^. at Colour of
+        Just (Component _ (RenderColour _)) ->
+             e #.= Component Colour (RenderColour endCol)
+        _ -> return ()
+      return $ GameEvent (toggleColour endCol startCol wire')
+    Left _ -> do
+      case comp e ^. at Colour of
+        Just (Component _ (RenderColour _)) ->
+             e #.= Component Colour (RenderColour startCol)
+        _ -> return ()
+      return $ GameEvent (toggleColour startCol endCol wire')
