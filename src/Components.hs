@@ -85,7 +85,10 @@ physicalObj typ =
 addShapeCallback :: H.ShapeType -> Entity -> GameMonad H.Shape
 addShapeCallback typ e =
   case _components e ^. at Position of
-    Just (Component _ (PosInt pos)) -> do
-      liftIO $ print pos
-      addShape typ (fmap fromIntegral pos)
+    Just (Component _ (PosInt pos)) -> addShape typ (fmap fromIntegral pos)
     _ -> addShape typ (V2 0.0 0.0)
+
+
+--------------------------------------------------------------------------------
+mouseCallback :: GameMonad () -> Component
+mouseCallback = Component Mouse . MouseCallback

@@ -35,6 +35,7 @@ data Tag =
   | Joint
   | CollisionShape
   | Keyboard
+  | Mouse
   | AffectRendering
   | EventListener
   | EventPublisher
@@ -62,6 +63,7 @@ data ComponentData =
   | Events [GameEvent]
   | PosInt (V2 Int)
   | ForceInt (V2 Int)
+  | MouseCallback (GameMonad ()) --TODO, enrich with wire
   | PhysicalShape ShapeState
   | MustRenderWire (GameWire NominalDiffTime Bool)
   | PlKbWire (GameWire NominalDiffTime (V2 Int))

@@ -25,6 +25,7 @@ import qualified Physics.Hipmunk as H
 
 --------------------------------------------------------------------------------
 import Types
+import Input
 import Entities
 import Components
 import Wires
@@ -165,11 +166,13 @@ buildEntities = do
     fnt <- lift $ fontFromFile "resources/ProFont.ttf"
     lift $ setTextFont t fnt
     (#>) (Entity 0 NoAlias
+         (SMap.fromList [(Mouse, mouseCallback spawnRigidBody)
+                   ]))
+    (#>) (Entity 0 NoAlias
                (SMap.fromList
                  [(Renderable, sprite spr)
                  ,(Position, position 100 100)
                  ,(LinearForce, linearForce (V2 0 1))
-
                  ]))
     (#>) (Entity 0 NoAlias
                (SMap.fromList

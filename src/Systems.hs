@@ -164,24 +164,32 @@ updateSprite co =
 
 --------------------------------------------------------------------------------
 inputSystem :: System
-inputSystem = System $ updateAll $ \e ->
-  case liftM2 (,)
-       (SMap.lookup Keyboard (comp e))
-       (SMap.lookup Position (comp e)) of
-    Just (k@(Component _ (PlKbWire w)),
-          c@(Component _ (PosInt oldPos))) -> do
-     sess <- gets $ view gameTime
-     (dt, _) <- stepSession sess
-     (res, wire') <- stepWire w dt (Right (dtime dt))
-     case res of
-       Right ds -> do
-         updateKbWire wire' k e
-         let newC = compData .~ PosInt (oldPos + ds) $ c
-         e #.= newC
-       Left  _  -> updateKbWire wire' k e
-    _ -> return ()
+inputSystem = System $ updateAll $ \e -> do
+  updateMouse e
+  updateKeyboard e
 
   where
+    updateMouse e =
+      case SMap.lookup Mouse (comp e) of
+        Just (Component _ (MouseCallback clbk)) -> clbk
+        _ -> return ()
+    updateKeyboard e =
+      case liftM2 (,)
+           (SMap.lookup Keyboard (comp e))
+           (SMap.lookup Position (comp e)) of
+        Just (k@(Component _ (PlKbWire w)),
+              c@(Component _ (PosInt oldPos))) -> do
+         sess <- gets $ view gameTime
+         (dt, _) <- stepSession sess
+         (res, wire') <- stepWire w dt (Right (dtime dt))
+         case res of
+           Right ds -> do
+             updateKbWire wire' k e
+             let newC = compData .~ PosInt (oldPos + ds) $ c
+             e #.= newC
+           Left  _  -> updateKbWire wire' k e
+        _ -> return ()
+
     updateKbWire wire k e = do
       let newK = compData .~ PlKbWire wire $ k
       e #.= newK
