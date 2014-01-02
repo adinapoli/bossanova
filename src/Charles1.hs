@@ -5,6 +5,7 @@
 import Prelude hiding ((.), id)
 
 import Control.Wire
+import Linear.V2
 import System.Random
 import Control.Lens hiding (at)
 import qualified SFML.Window as W
@@ -19,6 +20,7 @@ import Control.Monad.Trans.State
 import Control.Monad.Trans.Class (lift)
 import Data.Word
 import Data.Time.Clock.POSIX (getPOSIXTime)
+import qualified Physics.Hipmunk as H
 
 
 --------------------------------------------------------------------------------
@@ -28,6 +30,7 @@ import Components
 import Wires
 import Systems
 import Events
+import Physics
 
 
 --------------------------------------------------------------------------------
@@ -36,11 +39,13 @@ import Events
 -- memory.
 main :: IO ()
 main = runSFML $ do
-      gameState  <- initState
+      fMgr <- liftIO createPhysicsManager
+      gameState  <- initState fMgr
       runAndDealloc gameState showMenu
       flip evalStateT gameState $ do
         buildEntities
         gameLoop
+        destroyPhysicManager
 
 
 --------------------------------------------------------------------------------
@@ -83,7 +88,6 @@ showMenu = do
     showMenuLoop = do
         win <- gets $ view gameWin
         sess <- gets $ view gameTime
-        eMgr <- gets $ view entityMgr
         sys <- gets $ view systems
         lift $ clearRenderWindow win white
 
@@ -91,7 +95,7 @@ showMenu = do
         forM_ sys tick
 
         -- Update the game state
-        (dt, sess') <- stepSession sess
+        (_, sess') <- stepSession sess
         gameTime .= sess'
         lift $ display win
 
@@ -105,8 +109,8 @@ showMenu = do
 
 
 --------------------------------------------------------------------------------
-initState :: SFML GameState
-initState = do
+initState :: PhysicsManager -> SFML GameState
+initState fMgr = do
     g <- liftIO getStdGen
     let ctxSettings = Just $ W.ContextSettings 24 8 4 3 3
     wnd <- createRenderWindow
@@ -122,6 +126,7 @@ initState = do
       , _fps        = 0
       , _entityMgr  = Map.empty
       , _randGen    = g
+      , _physicsMgr = fMgr
       , _systems    = [
           inputSystem
         , textSizeSystem
@@ -129,6 +134,8 @@ initState = do
         , textCaptionSystem
         , rendererSystem
         , eventSystem
+        , newtonianSystem
+        , hipmunkSystem
         ]
     }
 
@@ -161,12 +168,14 @@ buildEntities = do
                (SMap.fromList
                  [(Renderable, sprite spr)
                  ,(Position, position 100 100)
+                 ,(LinearForce, linearForce (V2 0 1))
+
                  ]))
     (#>) (Entity 0 NoAlias
                (SMap.fromList
                  [(Renderable, sprite spr2)
                  ,(Position, position 400 300)
-                 ,(AffectRendering, blink 1 2)
+                 ,(CollisionShape, physicalObj (H.Circle 20))
                  ]))
     (#>) (Entity 0 ThePlayer
                (SMap.fromList 

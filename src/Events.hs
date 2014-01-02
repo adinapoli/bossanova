@@ -59,10 +59,12 @@ toggleColour startCol endCol wire e = do
   case res of
     Right _ -> do
       case comp e ^. at Colour of
-        Just (Component _ (RenderColour _)) ->
-             e #.= Component Colour (RenderColour endCol)
+        Just (Component _ (RenderColour col)) ->
+             if col == startCol
+                then e #.= Component Colour (RenderColour endCol)
+                else e #.= Component Colour (RenderColour startCol)
         _ -> return ()
-      return $ GameEvent (toggleColour endCol startCol wire')
+      return $ GameEvent (toggleColour startCol endCol wire')
     Left _ -> do
       case comp e ^. at Colour of
         Just (Component _ (RenderColour _)) ->

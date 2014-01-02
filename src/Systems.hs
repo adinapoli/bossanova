@@ -1,114 +1,118 @@
-{-# LANGUAGE RecordWildCards #-}
-
 module Systems where
 
 import Prelude hiding ((.), id)
-import Linear.V2
-import qualified SFML.Graphics as G
 import Control.Monad
-import Control.Parallel.Strategies
 import Control.Wire hiding (at, when)
 import Control.Monad.Trans.State
 import Control.Monad.SFML
 import Control.Monad.SFML.Graphics
 import Control.Lens
-import qualified Data.List as List
-import Control.Concurrent.STM
 import Control.Monad.Trans.Class (lift)
-import qualified SFML.System as S
 import qualified Data.IntMap.Strict as Map
 import qualified Data.Map.Strict as SMap
+import qualified Physics.Hipmunk as H
+import qualified Data.StateVar as SV
 
 
 import Types
 import Components
+import Physics
+
+
+--------------------------------------------------------------------------------
+comp :: Entity -> Components
+comp = _components
+
+
+--------------------------------------------------------------------------------
+updateAll :: (Entity -> GameMonad ()) -> GameMonad ()
+updateAll fn = do
+  eMgr <- gets $ view entityMgr
+  let allEntities = Map.elems eMgr
+  mapM_ fn allEntities
+  return ()
+
+
+hipmunkSystem :: System
+hipmunkSystem = System $ do
+  pMgr <- gets $ view physicsMgr
+  let wrld = pMgr ^. world
+  sess <- gets $ view gameTime
+  (dt, _) <- stepSession sess
+  liftIO $ H.step wrld (fromIntegral . fromEnum $ dtime dt / 1e10)
+  updateAll $ \e ->
+    case liftM2 (,)
+         (comp e ^. at CollisionShape)
+         (comp e ^. at Position) of
+     Just (Component _ (PhysicalShape (HipmunkUninitializedShape clbk)),
+           _) -> do
+       newShp <- clbk e
+       e #.= Component CollisionShape
+             (PhysicalShape (HipmunkInitializedShape newShp))
+     Just (Component _ (PhysicalShape (HipmunkInitializedShape sh)),
+           Component _ (PosInt pos)) -> do
+       newPos <- liftIO $ SV.get . H.position $ H.body sh
+       e #.= Component Position
+             (PosInt (pos + fmap truncate (fromHipmunkVector newPos)))
+     _ -> return ()
 
 
 --------------------------------------------------------------------------------
 newtonianSystem :: System
-newtonianSystem = System $ do
-  sess <- gets $ view gameTime
-  eMgr <- gets $ view entityMgr
-  (dt, sess') <- stepSession sess
-  --(res, wire') <- stepWire wire dt (Right (dtime dt))
-  case Left () of
-    Right v -> do
-      let allEntities = Map.elems eMgr
-      mapM_ updateSingle allEntities
-      return ()
-    Left  _ -> return ()
-  where
-    updateSingle :: Entity -> GameMonad ()
-    updateSingle e = return () -- TODO
+newtonianSystem = System $ updateAll $ \e ->
+  case liftM2 (,)
+       (comp e ^. at LinearForce)
+       (comp e ^. at Position) of
+    Just (Component _ (ForceInt ds),
+          Component _ (PosInt pos)) ->
+      e #.= Component Position (PosInt (pos + ds))
+    _ -> return ()
 
 
 --------------------------------------------------------------------------------
 textSizeSystem :: System
-textSizeSystem = System $ do
-  eMgr <- gets $ view entityMgr
-  let allEntities = Map.elems eMgr
-  mapM_ updateSingle allEntities
-  return ()
-  where
-    updateSingle :: Entity -> GameMonad ()
-    updateSingle e = let comp = _components e in
-      case liftM2 (,) (comp ^. at Renderable) (comp ^. at Size) of
-        Just (Component _ (Text t),
-              Component _ (SizeInt sz)) ->
-          lift $ setTextCharacterSize t sz
-        _ -> return ()
+textSizeSystem = System $ updateAll $ \e -> 
+  case liftM2 (,)
+       (comp e ^. at Renderable)
+       (comp e ^. at Size) of
+    Just (Component _ (Text t),
+          Component _ (SizeInt sz)) ->
+      lift $ setTextCharacterSize t sz
+    _ -> return ()
+
 
 --------------------------------------------------------------------------------
 textCaptionSystem :: System
-textCaptionSystem = System $ do
-  eMgr <- gets $ view entityMgr
-  let allEntities = Map.elems eMgr
-  mapM_ updateSingle allEntities
-  return ()
-  where
-    updateSingle :: Entity -> GameMonad ()
-    updateSingle e = let comp = _components e in
-      case liftM2 (,) (comp ^. at Renderable) (comp ^. at Caption) of
-        Just (Component _ (Text t),
-              Component _ (TextCaption cap)) -> lift $ setTextString t cap
-        _ -> return ()
+textCaptionSystem = System $ updateAll $ \e ->
+  case liftM2 (,)
+       (comp e ^. at Renderable)
+       (comp e ^. at Caption) of
+    Just (Component _ (Text t),
+          Component _ (TextCaption cap)) -> lift $ setTextString t cap
+    _ -> return ()
 
 
 --------------------------------------------------------------------------------
 eventSystem :: System
-eventSystem = System $ do
-  eMgr <- gets $ view entityMgr
-  let allEntities = Map.elems eMgr
-  mapM_ updateSingle allEntities
-  return ()
-  where
-    updateSingle :: Entity -> GameMonad ()
-    updateSingle e = case (comp e) ^. at EventListener of
-        Just (Component _ (Events evts)) -> do
-          steppedEvts <- forM evts $ \(GameEvent fn) -> fn e
-          let newC = Component EventListener (Events steppedEvts)
-          e #.= newC
-        Nothing -> return ()
+eventSystem = System $ updateAll $ \e ->
+  case comp e ^. at EventListener of
+    Just (Component _ (Events evts)) -> do
+      steppedEvts <- forM evts $ \(GameEvent fn) -> fn e
+      let newC = Component EventListener (Events steppedEvts)
+      e #.= newC
+    Nothing -> return ()
 
-
-comp :: Entity -> Components
-comp = _components
 
 --------------------------------------------------------------------------------
 textColourSystem :: System
-textColourSystem = System $ do
-  eMgr <- gets $ view entityMgr
-  let allEntities = Map.elems eMgr
-  mapM_ updateSingle allEntities
-  return ()
-  where
-    updateSingle :: Entity -> GameMonad ()
-    updateSingle e = let comp = _components e in
-      case liftM2 (,) (comp ^. at Renderable) (comp ^. at Colour) of
-        Just (Component _ (Text t),
-              Component _ (RenderColour cl)) ->
-          lift $ setTextColor t cl
-        _ -> return ()
+textColourSystem = System $ updateAll $ \e ->
+  case liftM2 (,)
+       (comp e ^. at Renderable)
+       (comp e ^. at Colour) of
+    Just (Component _ (Text t),
+          Component _ (RenderColour cl)) ->
+      lift $ setTextColor t cl
+    _ -> return ()
 
 
 --------------------------------------------------------------------------------
@@ -116,35 +120,28 @@ textColourSystem = System $ do
 -- TODO: Multicast for renderables?
 -- e.g. blink
 rendererSystem :: System
-rendererSystem = System $ do
-  eMgr <- gets $ view entityMgr
-  let allEntities = Map.elems eMgr
-  mapM_ updateSingle allEntities
-  return ()
-  where
-    updateSingle :: Entity -> GameMonad ()
-    updateSingle e = let comp = _components e in
-      case (comp ^. at AffectRendering) of
-        Just (Component _ (MustRenderWire w)) -> do
-          sess <- gets $ view gameTime
-          (dt, sess') <- stepSession sess
-          (res, wire') <- stepWire w dt (Right (dtime dt))
-          let newC = Component AffectRendering (MustRenderWire wire')
-          e #.= newC
-          case res of
-            Right _ -> do
-              updateSprite comp
-              updateText comp
-            Left  _ -> return ()
-        _ -> do 
-          updateSprite comp
-          updateText comp
+rendererSystem = System $ updateAll $ \e ->
+  case comp e ^. at AffectRendering of
+    Just (Component _ (MustRenderWire w)) -> do
+      sess <- gets $ view gameTime
+      (dt, _) <- stepSession sess
+      (res, wire') <- stepWire w dt (Right (dtime dt))
+      let newC = Component AffectRendering (MustRenderWire wire')
+      e #.= newC
+      case res of
+        Right _ -> do
+          updateSprite (comp e)
+          updateText (comp e)
+        Left  _ -> return ()
+    _ -> do 
+      updateSprite (comp e)
+      updateText (comp e)
 
 
 --------------------------------------------------------------------------------
 updateText :: Components -> GameMonad ()
-updateText comp =
-  case liftM2 (,) (comp ^. at Renderable) (comp ^. at Position) of
+updateText co =
+  case liftM2 (,) (co ^. at Renderable) (co ^. at Position) of
     Just (Component _ (Text t),
           Component _ (PosInt currentPos)) -> do
       win <- gets $ view gameWin
@@ -155,8 +152,8 @@ updateText comp =
 
 --------------------------------------------------------------------------------
 updateSprite :: Components -> GameMonad ()
-updateSprite comp =
-  case liftM2 (,) (comp ^. at Renderable) (comp ^. at Position) of
+updateSprite co =
+  case liftM2 (,) (co ^. at Renderable) (co ^. at Position) of
     Just (Component _ (Sprite s),
           Component _ (PosInt currentPos)) -> do
       win <- gets $ view gameWin
@@ -167,28 +164,24 @@ updateSprite comp =
 
 --------------------------------------------------------------------------------
 inputSystem :: System
-inputSystem = System $ do
-  eMgr <- gets $ view entityMgr
-  let allEntities = Map.elems eMgr
-  mapM_ updateSingle allEntities
-  return ()
-  where
-    updateSingle :: Entity -> GameMonad ()
-    updateSingle e = let comp = _components e in
-      case liftM2 (,) (SMap.lookup Keyboard comp) (SMap.lookup Position comp) of
-        Just (k@(Component _ (PlKbWire w)),
-              c@(Component _ (PosInt oldPos))) -> do
-         sess <- gets $ view gameTime
-         (dt, sess') <- stepSession sess
-         (res, wire') <- stepWire w dt (Right (dtime dt))
-         case res of
-           Right ds -> do
-             updateKbWire wire' k e
-             let newC = compData .~ PosInt (oldPos + ds) $ c
-             e #.= newC
-           Left  _  -> updateKbWire wire' k e
-        _ -> return ()
+inputSystem = System $ updateAll $ \e ->
+  case liftM2 (,)
+       (SMap.lookup Keyboard (comp e))
+       (SMap.lookup Position (comp e)) of
+    Just (k@(Component _ (PlKbWire w)),
+          c@(Component _ (PosInt oldPos))) -> do
+     sess <- gets $ view gameTime
+     (dt, _) <- stepSession sess
+     (res, wire') <- stepWire w dt (Right (dtime dt))
+     case res of
+       Right ds -> do
+         updateKbWire wire' k e
+         let newC = compData .~ PosInt (oldPos + ds) $ c
+         e #.= newC
+       Left  _  -> updateKbWire wire' k e
+    _ -> return ()
 
+  where
     updateKbWire wire k e = do
       let newK = compData .~ PlKbWire wire $ k
       e #.= newK

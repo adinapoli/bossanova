@@ -33,4 +33,6 @@ executable charles1
       transformers,
       containers,
       stm,
-      safe
+      safe,
+      Hipmunk,
+      StateVar

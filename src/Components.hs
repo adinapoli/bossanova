@@ -5,11 +5,14 @@ module Components where
 import Prelude hiding ((.), id)
 import Linear.V2
 import qualified SFML.Graphics as G
-import Control.Wire
-
+import Control.Wire hiding (at)
+import Control.Lens
+import Control.Monad.SFML
+import qualified Physics.Hipmunk as H
 
 import Types
 import Wires
+import Physics
 
 
 --------------------------------------------------------------------------------
@@ -63,3 +66,26 @@ keyboard wire = Component Keyboard (PlKbWire wire)
 --------------------------------------------------------------------------------
 onEvents :: [GameEvent] -> Component
 onEvents = Component EventListener . Events
+
+
+--------------------------------------------------------------------------------
+linearForce :: V2 Int -> Component
+linearForce = Component LinearForce . ForceInt
+
+
+--------------------------------------------------------------------------------
+physicalObj :: H.ShapeType -> Component
+physicalObj typ =
+  let callback = addShapeCallback typ
+  in Component CollisionShape
+     (PhysicalShape (HipmunkUninitializedShape callback))
+
+
+--------------------------------------------------------------------------------
+addShapeCallback :: H.ShapeType -> Entity -> GameMonad H.Shape
+addShapeCallback typ e =
+  case _components e ^. at Position of
+    Just (Component _ (PosInt pos)) -> do
+      liftIO $ print pos
+      addShape typ (fmap fromIntegral pos)
+    _ -> addShape typ (V2 0.0 0.0)
