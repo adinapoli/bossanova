@@ -16,6 +16,7 @@ import qualified Data.StateVar as SV
 
 import Types
 import Components
+import Entities
 import Physics
 
 
@@ -33,6 +34,7 @@ updateAll fn = do
   return ()
 
 
+--------------------------------------------------------------------------------
 hipmunkSystem :: System
 hipmunkSystem = System $ do
   pMgr <- gets $ view physicsMgr
@@ -40,21 +42,45 @@ hipmunkSystem = System $ do
   sess <- gets $ view gameTime
   (dt, _) <- stepSession sess
   liftIO $ H.step wrld (fromIntegral . fromEnum $ dtime dt / 1e10)
-  updateAll $ \e ->
-    case liftM2 (,)
-         (comp e ^. at CollisionShape)
-         (comp e ^. at Position) of
-     Just (Component _ (PhysicalShape (HipmunkUninitializedShape clbk)),
-           _) -> do
-       newShp <- clbk e
-       e #.= Component CollisionShape
-             (PhysicalShape (HipmunkInitializedShape newShp))
-     Just (Component _ (PhysicalShape (HipmunkInitializedShape sh)),
-           Component _ (PosInt pos)) -> do
-       newPos <- liftIO $ SV.get . H.position $ H.body sh
-       e #.= Component Position
-             (PosInt (pos + fmap truncate (fromHipmunkVector newPos)))
-     _ -> return ()
+  updateAll $ \e -> do
+
+    updateStaticBody e
+    updateDynamicBody e
+  where
+    updateStaticBody e = 
+      case comp e ^. at StaticBody of
+
+       Just (Component _ (CollisionShape (HipmunkUninitializedShape clbk))) -> do
+         when (e ^. alias == Special) $ liftIO $ print "init shp"
+         newShp <- clbk e
+         e #.= Component StaticBody
+               (CollisionShape (HipmunkInitializedShape newShp))
+
+       Just (Component _ (CollisionShape (HipmunkInitializedShape sh))) -> do
+         newPos <- liftIO $ SV.get . H.position $ H.body sh
+         when (e ^. alias == Special) (liftIO $ print $ "S->" ++ show newPos)
+
+       _ -> return ()
+
+    updateDynamicBody e =
+      case liftM2 (,)
+           (comp e ^. at DynamicBody)
+           (comp e ^. at Position) of
+
+       Just (Component _ (CollisionShape (HipmunkUninitializedShape clbk)),
+             _) -> do
+         newShp <- clbk e
+         e #.= Component DynamicBody
+               (CollisionShape (HipmunkInitializedShape newShp))
+
+       Just (Component DynamicBody (CollisionShape (HipmunkInitializedShape sh)),
+             Component _ (PosInt pos)) -> do
+         when (e ^. alias == Special) (liftIO $ print $ "-->" ++ show pos)
+         newPos <- liftIO $ SV.get . H.position $ H.body sh
+         e #.= Component Position
+               (PosInt (fmap truncate (fromHipmunkVector newPos)))
+
+       _ -> return ()
 
 
 --------------------------------------------------------------------------------
@@ -68,6 +94,38 @@ newtonianSystem = System $ updateAll $ \e ->
       e #.= Component Position (PosInt (pos + ds))
     _ -> return ()
 
+--------------------------------------------------------------------------------
+spriteInitSystem :: System
+spriteInitSystem = System $ updateAll $ \e ->
+  case comp e ^. at Renderable of
+    Just (Component _ (Sprite (UninitializedSprite clbk))) -> do
+      s <- clbk
+      e #.= Component Renderable (Sprite (InitializedSprite s))
+    _ -> return ()
+
+--------------------------------------------------------------------------------
+textureInitSystem :: System
+textureInitSystem = System $ updateAll $ \e ->
+  case comp e ^. at Texture of
+    Just (Component _ (SFMLTexture (UninitializedTexture clbk))) -> do
+      t <- clbk
+      e #.= Component Texture (SFMLTexture (InitializedTexture False t))
+    _ -> return ()
+
+--------------------------------------------------------------------------------
+textureAttacherSystem :: System
+textureAttacherSystem = System $ updateAll $ \e ->
+  case liftM3 (,,)
+       (comp e ^. at Texture)
+       (comp e ^. at Renderable)
+       (comp e ^. at BoundingBox) of
+    Just (Component _ (SFMLTexture (InitializedTexture False t))
+         ,Component _ (Sprite (InitializedSprite spr))
+         ,Component _ (IntRect r)) -> do
+      lift $ setTexture spr t True
+      lift $ setTextureRect spr r
+      e #.= Component Texture (SFMLTexture (InitializedTexture True t))
+    _ -> return ()
 
 --------------------------------------------------------------------------------
 textSizeSystem :: System
@@ -75,9 +133,19 @@ textSizeSystem = System $ updateAll $ \e ->
   case liftM2 (,)
        (comp e ^. at Renderable)
        (comp e ^. at Size) of
-    Just (Component _ (Text t),
+    Just (Component _ (Text (InitializedText t)),
           Component _ (SizeInt sz)) ->
       lift $ setTextCharacterSize t sz
+    _ -> return ()
+
+
+--------------------------------------------------------------------------------
+textInitSystem :: System
+textInitSystem = System $ updateAll $ \e ->
+  case comp e ^. at Renderable of
+    Just (Component _ (Text (UninitializedText clbk))) -> do
+      t <- clbk
+      e #.= Component Renderable (Text (InitializedText t))
     _ -> return ()
 
 
@@ -87,7 +155,7 @@ textCaptionSystem = System $ updateAll $ \e ->
   case liftM2 (,)
        (comp e ^. at Renderable)
        (comp e ^. at Caption) of
-    Just (Component _ (Text t),
+    Just (Component _ (Text (InitializedText t)),
           Component _ (TextCaption cap)) -> lift $ setTextString t cap
     _ -> return ()
 
@@ -97,7 +165,7 @@ eventSystem :: System
 eventSystem = System $ updateAll $ \e ->
   case comp e ^. at EventListener of
     Just (Component _ (Events evts)) -> do
-      steppedEvts <- forM evts $ \(GameEvent fn) -> fn e
+      steppedEvts <- forM evts $ \(GameCallback fn) -> fn e
       let newC = Component EventListener (Events steppedEvts)
       e #.= newC
     Nothing -> return ()
@@ -109,7 +177,7 @@ textColourSystem = System $ updateAll $ \e ->
   case liftM2 (,)
        (comp e ^. at Renderable)
        (comp e ^. at Colour) of
-    Just (Component _ (Text t),
+    Just (Component _ (Text (InitializedText t)),
           Component _ (RenderColour cl)) ->
       lift $ setTextColor t cl
     _ -> return ()
@@ -142,7 +210,7 @@ rendererSystem = System $ updateAll $ \e ->
 updateText :: Components -> GameMonad ()
 updateText co =
   case liftM2 (,) (co ^. at Renderable) (co ^. at Position) of
-    Just (Component _ (Text t),
+    Just (Component _ (Text (InitializedText t)),
           Component _ (PosInt currentPos)) -> do
       win <- gets $ view gameWin
       let pos = Just $ translationFromV2 currentPos
@@ -154,7 +222,7 @@ updateText co =
 updateSprite :: Components -> GameMonad ()
 updateSprite co =
   case liftM2 (,) (co ^. at Renderable) (co ^. at Position) of
-    Just (Component _ (Sprite s),
+    Just (Component _ (Sprite (InitializedSprite s)),
           Component _ (PosInt currentPos)) -> do
       win <- gets $ view gameWin
       let pos = Just $ translationFromV2 currentPos
@@ -193,19 +261,3 @@ inputSystem = System $ updateAll $ \e -> do
     updateKbWire wire k e = do
       let newK = compData .~ PlKbWire wire $ k
       e #.= newK
-
-
---------------------------------------------------------------------------------
--- Common pitfall: Once you update the entity you must ask the entityManager
--- for the new entity again, since everything is immutable. To avoid this, we
--- don't update the entity directly, but we just use its ID to fetch the entity
--- from the EntityManager.
-(#.=) :: Entity -> Component -> GameMonad ()
-ent #.= newC = do
-  eMgr <- gets $ view entityMgr
-  case eMgr ^. at (_eId ent) of
-    Just oldE -> do
-      let tg = _compTag newC
-      let newE = components .~ SMap.insert tg newC (_components oldE) $ ent
-      entityMgr .= Map.insert (_eId newE) newE eMgr
-    Nothing -> return ()

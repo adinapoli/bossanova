@@ -18,8 +18,6 @@ import qualified Data.IntMap.Strict as Map
 import qualified Data.Map.Strict as SMap
 import Control.Monad.Trans.State
 import Control.Monad.Trans.Class (lift)
-import Data.Word
-import Data.Time.Clock.POSIX (getPOSIXTime)
 import qualified Physics.Hipmunk as H
 
 
@@ -57,29 +55,28 @@ runAndDealloc st action = liftIO $ runSFML $ evalStateT action st
 --------------------------------------------------------------------------------
 showMenu :: GameMonad ()
 showMenu = do
-    (m, p) <- lift $ do
-      playTxt <- createText
-      fnt <- fontFromFile "resources/ProFont.ttf"
-      setTextFont playTxt fnt
-      setTextString playTxt "Press Enter to play!"
+    m <- lift $ do
       menuTex <- textureFromFile
                  "resources/menu.png"
                  (Just $ G.IntRect 0 0 640 480)
       menuSpr <- createSprite
       setTexture menuSpr menuTex True
-      return (menuSpr, playTxt)
+      return menuSpr
     (#>) (Entity 0 NoAlias
          (SMap.fromList [
-                     (Renderable, sprite m)
+                     (Renderable, sprite)
+                   , (Texture, textureFrom "resources/menu.png")
+                   , (BoundingBox, rect 0 0 640 480)
                    , (Position, position 0 0)
                    ]))
     (#>) (Entity 0 NoAlias
          (SMap.fromList [
-                     (Renderable, text p)
+                     (Renderable, text)
                    , (Size, intSize 20)
+                   , (Caption, textCaption "Press Enter to play!")
                    , (Colour, colour white)
                    , (EventListener, onEvents [
-                      GameEvent (toggleColour white gray (blinkWire 1 2))
+                      GameCallback (toggleColour white gray (blinkWire 1 2))
                    ])
                    , (Position, position 200 430)
                    ]))
@@ -119,7 +116,7 @@ initState fMgr = do
            "The Lost Lens"
            [W.SFDefaultStyle]
            ctxSettings
-    setFramerateLimit wnd 60
+    --setFramerateLimit wnd 60
     return GameState {
         _gameWin    = wnd
       , _gameTime   = clockSession_
@@ -128,11 +125,16 @@ initState fMgr = do
       , _entityMgr  = Map.empty
       , _randGen    = g
       , _physicsMgr = fMgr
+      , _artMgr     = SMap.empty
       , _systems    = [
           inputSystem
+        , textureInitSystem
+        , textureAttacherSystem
+        , spriteInitSystem
         , textSizeSystem
         , textColourSystem
         , textCaptionSystem
+        , textInitSystem
         , rendererSystem
         , eventSystem
         , newtonianSystem
@@ -142,63 +144,87 @@ initState fMgr = do
 
 
 ------------------------------------------------------------------------------
-milliTime :: IO Word64
-milliTime = do
-    seconds <- realToFrac `fmap` getPOSIXTime :: IO Double
-    return $ round $ seconds * 1e3
-
-
-------------------------------------------------------------------------------
 buildEntities :: GameMonad ()
 buildEntities = do
-    entityMgr .= Map.empty
-    spr <- lift createSprite
-    tex <- lift $ textureFromFile "resources/sprites.png" Nothing
-    lift $ setTexture spr tex True
-    lift $ setTextureRect spr (G.IntRect 1 1 32 32)
-    spr2 <- lift createSprite
-    lift $ setTexture spr2 tex True
-    lift $ setTextureRect spr2 (G.IntRect 1 1 32 32)
-    spr3 <- lift createSprite
-    lift $ setTexture spr3 tex True
-    lift $ setTextureRect spr3 (G.IntRect 34 1 32 32)
-    t <- lift createText
-    fnt <- lift $ fontFromFile "resources/ProFont.ttf"
-    lift $ setTextFont t fnt
+    -- screen bounds
+    (#>) (Entity 0 NoAlias
+               (SMap.fromList
+                 [(Position, position 0 440)
+                 ,(StaticBody, staticObj
+                    (H.LineSegment (H.Vector 0 440) (H.Vector 640 440) 1.0))
+                 ]))
+
+    -- spawner of sprites
     (#>) (Entity 0 NoAlias
          (SMap.fromList [(Mouse, mouseCallback spawnRigidBody)
                    ]))
+
+    -- counters
+    (#>) (Entity 0 BodyCounter
+         (SMap.fromList [
+                     (Renderable, text)
+                   , (Size, intSize 20)
+                   , (Colour, colour red)
+                   , (Caption, textCaption "")
+                   , (EventListener, onEvents [
+                       GameCallback displayPhysicsBodyCount
+                   ])
+                   , (Position, position 10 40)
+                   ]))
+
+    (#>) (Entity 0 FPSCounter
+         (SMap.fromList [
+                     (Renderable, text)
+                   , (Size, intSize 20)
+                   , (Colour, colour red)
+                   , (Caption, textCaption "")
+                   , (EventListener, onEvents [
+                       GameCallback updateAndDisplayFPS
+                   ])
+                   , (Position, position 10 10)
+                   ]))
+
     (#>) (Entity 0 NoAlias
                (SMap.fromList
-                 [(Renderable, sprite spr)
+                 [(Renderable, sprite)
+                 ,(Texture, textureFrom "resources/sprites.png")
+                 ,(BoundingBox, rect 1 1 32 32)
                  ,(Position, position 100 100)
                  ,(LinearForce, linearForce (V2 0 1))
                  ]))
-    (#>) (Entity 0 NoAlias
+
+    (#>) (Entity 0 Special
                (SMap.fromList
-                 [(Renderable, sprite spr2)
-                 ,(Position, position 400 300)
-                 ,(CollisionShape, physicalObj (H.Circle 20))
+                 [ (Renderable, sprite)
+                 , (Texture, textureFrom "resources/sprites.png")
+                 , (BoundingBox, rect 1 1 32 32)
+                 , (Position, position 100 0)
+                 , (StaticBody, staticObj (H.Circle 16))
                  ]))
+
     (#>) (Entity 0 ThePlayer
                (SMap.fromList 
-                 [ (Renderable, sprite spr3)
+                 [ (Renderable, sprite)
+                 , (Texture, textureFrom "resources/sprites.png")
+                 , (BoundingBox, rect 34 1 32 32)
                  , (Position, position 20 300)
                  , (Keyboard, keyboard playerKeyboard)
                  ]
                ))
+
     (#>) (Entity 0 PointCounter
-         (SMap.fromList [
-                     (Renderable, text t)
-                   , (Size, intSize 20)
-                   , (Colour, colour red)
-                   , (Caption, textCaption "Move the player to update")
-                   , (EventListener, onEvents [
-                       GameEvent (updateCaption playerKeyboard)
-                     , GameEvent (toggleColour red green (blinkWire 1 2))
-                   ])
-                   , (Position, position 400 40)
-                   ]))
+               (SMap.fromList
+                 [ (Renderable, text)
+                 , (Size, intSize 20)
+                 , (Colour, colour red)
+                 , (Caption, textCaption "Move the player to update")
+                 , (EventListener, onEvents [
+                     GameCallback (updateCaption playerKeyboard)
+                   , GameCallback (toggleColour red green (blinkWire 1 2))
+                 ])
+                 , (Position, position 10 60)
+                 ]
+               ))
     return ()
 
 
@@ -222,24 +248,7 @@ gameLoop = do
   -- Update the stdGen
   randGen .= gameState ^. randGen . to (snd . next)
 
-  updateAndDisplayFPS
-
   evt <- lift $ pollEvent wnd
   case evt of
     Just W.SFEvtClosed -> return ()
     _ -> gameLoop
-
-
---------------------------------------------------------------------------------
-updateAndDisplayFPS :: GameMonad ()
-updateAndDisplayFPS = do
-  fTime <- gets $ view frameTime
-  fps' <- gets $ view fps
-  curTime <- liftIO milliTime
-  let dt = curTime - fTime
-  if dt >= 1000
-    then do
-      frameTime .= curTime
-      fps .= 0
-      liftIO $ putStrLn $ "FPS: " ++ show (fps' + 1)
-    else fps += 1

@@ -13,16 +13,23 @@ import qualified Physics.Hipmunk as H
 import Types
 import Wires
 import Physics
+import Callbacks
 
 
 --------------------------------------------------------------------------------
-sprite :: G.Sprite -> Component
-sprite = Component Renderable . Sprite
+sprite :: Component
+sprite = Component Renderable (Sprite (UninitializedSprite initSpriteClbk))
 
 
 --------------------------------------------------------------------------------
-text :: G.Text -> Component
-text = Component Renderable . Text
+textureFrom :: FilePath -> Component
+textureFrom path = Component Texture
+                   (SFMLTexture (UninitializedTexture (initTextureClbk path)))
+
+
+--------------------------------------------------------------------------------
+text :: Component
+text = Component Renderable (Text $ UninitializedText initTextClbk)
 
 
 --------------------------------------------------------------------------------
@@ -64,7 +71,7 @@ keyboard wire = Component Keyboard (PlKbWire wire)
 
 
 --------------------------------------------------------------------------------
-onEvents :: [GameEvent] -> Component
+onEvents :: [GameCallback] -> Component
 onEvents = Component EventListener . Events
 
 
@@ -74,21 +81,33 @@ linearForce = Component LinearForce . ForceInt
 
 
 --------------------------------------------------------------------------------
-physicalObj :: H.ShapeType -> Component
-physicalObj typ =
-  let callback = addShapeCallback typ
-  in Component CollisionShape
-     (PhysicalShape (HipmunkUninitializedShape callback))
-
+dynamicObj :: H.ShapeType -> Component
+dynamicObj typ =
+  let callback = addShapeCallback addDynamicShape typ
+  in Component DynamicBody
+     (CollisionShape (HipmunkUninitializedShape callback))
 
 --------------------------------------------------------------------------------
-addShapeCallback :: H.ShapeType -> Entity -> GameMonad H.Shape
-addShapeCallback typ e =
+staticObj :: H.ShapeType -> Component
+staticObj typ =
+  let callback = addShapeCallback addStaticShape typ
+  in Component StaticBody
+     (CollisionShape (HipmunkUninitializedShape callback))
+
+--------------------------------------------------------------------------------
+addShapeCallback :: (H.ShapeType -> V2 Double -> GameMonad H.Shape)
+                 -> H.ShapeType -> Entity -> GameMonad H.Shape
+addShapeCallback fn typ e =
   case _components e ^. at Position of
-    Just (Component _ (PosInt pos)) -> addShape typ (fmap fromIntegral pos)
-    _ -> addShape typ (V2 0.0 0.0)
+    Just (Component _ (PosInt pos)) -> fn typ (fmap fromIntegral pos)
+    _ -> fn typ (V2 0.0 0.0)
 
 
 --------------------------------------------------------------------------------
 mouseCallback :: GameMonad () -> Component
 mouseCallback = Component Mouse . MouseCallback
+
+
+--------------------------------------------------------------------------------
+rect :: Int -> Int -> Int -> Int -> Component
+rect x1 y1 x2 y2 = Component BoundingBox (IntRect (G.IntRect x1 y1 x2 y2))

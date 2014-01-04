@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE ExistentialQuantification #-}
 
 module Types where
@@ -15,7 +16,7 @@ import qualified Data.IntMap.Strict as Map
 import qualified Data.Map.Strict as SMap
 
 import qualified Physics.Hipmunk as H
-import Data.StateVar
+
 
 --------------------------------------------------------------------------------
 type GameWire = Wire (Timed NominalDiffTime ()) () GameMonad
@@ -30,10 +31,11 @@ data Tag =
     Position
   | Velocity
   | LinearForce
-  | RigidBody
-  | Constrain
+  | DynamicBody
+  | Texture
+  | BoundingBox
+  | StaticBody
   | Joint
-  | CollisionShape
   | Keyboard
   | Mouse
   | AffectRendering
@@ -48,30 +50,51 @@ data Tag =
 
 --------------------------------------------------------------------------------
 data Component = Component {
-    _compTag :: Tag
-  , _compData :: ComponentData
+    _compTag :: !Tag
+  , _compData :: !ComponentData
 }
 
 
 --------------------------------------------------------------------------------
 data ComponentData =
-    Sprite G.Sprite
-  | Text G.Text
-  | TextCaption String
-  | SizeInt Int
-  | RenderColour G.Color
-  | Events [GameEvent]
-  | PosInt (V2 Int)
-  | ForceInt (V2 Int)
-  | MouseCallback (GameMonad ()) --TODO, enrich with wire
-  | PhysicalShape ShapeState
+    Sprite !SpriteState
+  | Text !TextState
+  | TextCaption !String
+  | SFMLTexture !TextureState
+  | SizeInt !Int
+  | IntRect !G.IntRect
+  | RenderColour !G.Color
+  | Events ![GameCallback]
+  | PosInt !(V2 Int)
+  | ForceInt !(V2 Int)
+  | MouseCallback (GameMonad ())
+  | CollisionShape !ShapeState
   | MustRenderWire (GameWire NominalDiffTime Bool)
   | PlKbWire (GameWire NominalDiffTime (V2 Int))
 
+--------------------------------------------------------------------------------
+data SpriteState =
+      UninitializedSprite (GameMonad G.Sprite)
+    | InitializedSprite !G.Sprite
 
+--------------------------------------------------------------------------------
+data TextState =
+      UninitializedText (GameMonad G.Text)
+    | InitializedText !G.Text
+
+
+--------------------------------------------------------------------------------
+type Attached = Bool
+
+--------------------------------------------------------------------------------
+data TextureState =
+      UninitializedTexture (GameMonad G.Texture)
+    | InitializedTexture Attached !G.Texture
+
+--------------------------------------------------------------------------------
 data ShapeState =
     HipmunkUninitializedShape (Entity -> GameMonad H.Shape)
-  | HipmunkInitializedShape H.Shape
+  | HipmunkInitializedShape !H.Shape
 
 --------------------------------------------------------------------------------
 newtype System = System { tick :: GameMonad () }
@@ -85,19 +108,24 @@ type Components = SMap.Map Tag Component
 data Alias =
     NoAlias
   | ThePlayer
+  | BodyCounter
+  | FPSCounter
+  | Special
   | PointCounter deriving (Show, Eq)
 
 
 --------------------------------------------------------------------------------
 data Entity = Entity {
-    _eId :: Int
-  , _alias :: Alias
-  , _components :: Components
+    _eId :: !Int
+  , _alias :: !Alias
+  , _components :: !Components
 }
 
 
 --------------------------------------------------------------------------------
-newtype GameEvent = GameEvent { runEvent :: Entity -> GameMonad GameEvent }
+newtype GameCallback = GameCallback {
+  runEvent :: Entity -> GameMonad GameCallback
+  }
 
 
 
@@ -107,30 +135,40 @@ type EntityManager = Map.IntMap Entity
 
 --------------------------------------------------------------------------------
 data GameState = GameState {
-    _gameWin     :: G.RenderWindow
-  , _gameTime    :: Session GameMonad (Timed NominalDiffTime ())
-  , _frameTime   :: Word64
-  , _fps         :: Int
-  , _entityMgr   :: EntityManager
-  , _physicsMgr  :: PhysicsManager
-  , _randGen     :: StdGen
-  , _systems     :: [System]
+    _gameWin     :: !G.RenderWindow
+  , _gameTime    :: !(Session GameMonad (Timed NominalDiffTime ()))
+  , _frameTime   :: !Word64
+  , _fps         :: !Int
+  , _entityMgr   :: !EntityManager
+  , _physicsMgr  :: !PhysicsManager
+  , _artMgr      :: !ArtManager
+  , _randGen     :: !StdGen
+  , _systems     :: ![System]
 }
 
 
+--------------------------------------------------------------------------------
 type PhysicsBodyId = Int
 
+
+--------------------------------------------------------------------------------
+type ArtManager = SMap.Map FilePath G.Texture
+
+
+--------------------------------------------------------------------------------
 data PhysicsManager = PhysicsManager {
-    _world      :: H.Space
-  , _bodies     :: PhysicsBodyId
-  , _physicsCfg :: PhysicsConfig
+    _world      :: !H.Space
+  , _bodies     :: !PhysicsBodyId
+  , _physicsCfg :: !PhysicsConfig
 }
 
 
--- Using a slightly Chipmunk-friendly data structure
+--------------------------------------------------------------------------------
 data PhysicsConfig = PhysicsConfig {
-    _defGravity       :: V2 Double
-  , _defMass          :: Double
+    _defGravity       :: !(V2 Double)
+  , _defMass          :: !Double
+  , _defFriction      :: !Double
+  , _defElasticity    :: !Double
   , _defMoment        :: H.Mass -> H.ShapeType -> H.Position -> H.Moment
 }
 
@@ -139,10 +177,12 @@ data PhysicsConfig = PhysicsConfig {
 $(makeLenses ''GameState)
 $(makeLenses ''Entity)
 $(makeLenses ''Component)
-$(makeLenses ''GameEvent)
+$(makeLenses ''GameCallback)
 $(makeLenses ''PhysicsManager)
 $(makeLenses ''PhysicsConfig)
 $(makeLensesFor [("transform", "l_transform")] ''G.RenderStates)
 
+
+--------------------------------------------------------------------------------
 gray :: G.Color
 gray = G.Color 20 20 20 255

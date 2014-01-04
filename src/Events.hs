@@ -4,9 +4,12 @@ import Prelude hiding ((.))
 import Control.Wire hiding (at)
 import Control.Lens
 import Control.Monad
+import Control.Monad.SFML
 import Control.Monad.Trans.State
 import qualified SFML.Graphics as G
 import Safe hiding (at)
+import Data.Word
+import Data.Time.Clock.POSIX (getPOSIXTime)
 
 import Types
 import Systems
@@ -18,7 +21,7 @@ import Entities
 updateCaption :: Show a
               => GameWire NominalDiffTime a
               -> Entity
-              -> GameMonad GameEvent
+              -> GameMonad GameCallback
 updateCaption wire e = do
   wire' <- stepTimed wire $ \_ -> do
     pl  <- entityByAlias ThePlayer
@@ -30,20 +33,20 @@ updateCaption wire e = do
         let newC = Component Caption (TextCaption (show pos))
         e #.= newC
       Nothing -> return ()
-  return $ GameEvent (updateCaption wire')
+  return $ GameCallback (updateCaption wire')
 
 
 --------------------------------------------------------------------------------
 updateColour :: G.Color
              -> GameWire NominalDiffTime a
              -> Entity
-             -> GameMonad GameEvent
+             -> GameMonad GameCallback
 updateColour targetCol wire e = do
   wire' <- stepTimed wire $ \_ ->
     case comp e ^. at Colour of
       Just (Component _ (RenderColour _)) ->
            e #.= Component Colour (RenderColour targetCol)
-  return $ GameEvent (updateColour targetCol wire')
+  return $ GameCallback (updateColour targetCol wire')
 
 
 --------------------------------------------------------------------------------
@@ -51,7 +54,7 @@ toggleColour :: G.Color
              -> G.Color
              -> GameWire NominalDiffTime a
              -> Entity
-             -> GameMonad GameEvent
+             -> GameMonad GameCallback
 toggleColour startCol endCol wire e = do
   sess <- gets $ view gameTime
   (dt, _) <- stepSession sess
@@ -64,10 +67,55 @@ toggleColour startCol endCol wire e = do
                 then e #.= Component Colour (RenderColour endCol)
                 else e #.= Component Colour (RenderColour startCol)
         _ -> return ()
-      return $ GameEvent (toggleColour startCol endCol wire')
+      return $ GameCallback (toggleColour startCol endCol wire')
     Left _ -> do
       case comp e ^. at Colour of
         Just (Component _ (RenderColour _)) ->
              e #.= Component Colour (RenderColour startCol)
         _ -> return ()
-      return $ GameEvent (toggleColour startCol endCol wire')
+      return $ GameCallback (toggleColour startCol endCol wire')
+
+
+
+displayPhysicsBodyCount :: Entity -> GameMonad GameCallback
+displayPhysicsBodyCount e = do
+  pMgr <- gets $ view physicsMgr
+  bc  <- entityByAlias BodyCounter
+  case (headMay bc >>= \e' -> comp e' ^. at Caption) of
+    Just (Component _ (TextCaption _)) -> do
+      let newT = "Bodies: " ++ show (pMgr ^. bodies)
+      let newC = Component Caption (TextCaption newT)
+      e #.= newC
+      return $ GameCallback displayPhysicsBodyCount
+    Nothing -> return $ GameCallback displayPhysicsBodyCount
+
+
+------------------------------------------------------------------------------
+milliTime :: IO Word64
+milliTime = do
+    seconds <- realToFrac `fmap` getPOSIXTime :: IO Double
+    return $ round $ seconds * 1e3
+
+
+--------------------------------------------------------------------------------
+updateAndDisplayFPS :: Entity -> GameMonad GameCallback
+updateAndDisplayFPS e = do
+  fTime <- gets $ view frameTime
+  fps' <- gets $ view fps
+  curTime <- liftIO milliTime
+  let dt = curTime - fTime
+  if dt >= 1000
+    then do
+      frameTime .= curTime
+      fps .= 0
+      fc  <- entityByAlias FPSCounter
+      case (headMay fc >>= \e' -> comp e' ^. at Caption) of
+        Just (Component _ (TextCaption _)) -> do
+          let newT = "FPS: " ++ show (fps' + 1)
+          let newC = Component Caption (TextCaption newT)
+          e #.= newC
+          return $ GameCallback updateAndDisplayFPS
+        Nothing -> return $ GameCallback updateAndDisplayFPS
+    else do
+      fps += 1
+      return $ GameCallback updateAndDisplayFPS

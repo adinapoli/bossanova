@@ -12,8 +12,10 @@ import Data.StateVar
 
 instance Default PhysicsConfig where
   def = PhysicsConfig {
-      _defGravity       = V2 0.0 0.05
+      _defGravity       = V2 0.0 0.005
     , _defMass          = 1.0
+    , _defFriction      = 1.0
+    , _defElasticity    = 0.0
     , _defMoment        = momentForShape
     }
 
@@ -51,18 +53,44 @@ fromHipmunkVector (Vector x y) = V2 x y
 
 
 --------------------------------------------------------------------------------
--- Add a new ridig body to the Physic Manager
-addShape :: ShapeType -> V2 Double -> GameMonad Shape
-addShape shpTyp pos = do
+-- Add a new dynamic body to the Physic Manager
+addDynamicShape :: ShapeType -> V2 Double -> GameMonad Shape
+addDynamicShape shpTyp pos = do
   pMgr <- gets $ view physicsMgr
-  let wrld = pMgr ^. world
   let cfg  = pMgr ^. physicsCfg
   let defaultMass   = cfg ^. defMass 
   let momentFn = cfg ^. defMoment
-  let defaultMoment = momentFn defaultMass shpTyp (toHipmunkVector pos)
-  bd <- liftIO $ newBody defaultMass defaultMoment
-  sh <- liftIO $ newShape bd shpTyp (toHipmunkVector pos)
+  let defaultMoment = momentFn defaultMass shpTyp 0
+  addShape' defaultMass defaultMoment False shpTyp pos
+
+
+--------------------------------------------------------------------------------
+-- Add a new static body to the Physic Manager
+addStaticShape :: ShapeType -> V2 Double -> GameMonad Shape
+addStaticShape = addShape' infinity infinity True
+
+
+--------------------------------------------------------------------------------
+addShape' :: Double
+          -> Double
+          -> Bool
+          -> ShapeType
+          -> V2 Double
+          -> GameMonad Shape
+addShape' mss momt isStatic shpTyp pos = do
+  pMgr <- gets $ view physicsMgr
+  let defaultFriction   = pMgr ^. physicsCfg . defFriction
+  let defaultElasticity = pMgr ^. physicsCfg . defElasticity
+  let wrld = pMgr ^. world
+  bd <- liftIO $ newBody mss momt
+  liftIO $ position bd   $= toHipmunkVector pos
+  sh <- liftIO $ newShape bd shpTyp 0
+  liftIO $ do
+    friction sh   $= defaultFriction
+    elasticity sh $= defaultElasticity
   liftIO $ spaceAdd wrld bd
-  liftIO $ spaceAdd wrld sh
+  liftIO $ if isStatic
+     then spaceAdd wrld (Static sh)
+     else spaceAdd wrld sh
   physicsMgr .= (bodies +~ 1 $ pMgr)
   return sh

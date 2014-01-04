@@ -22,18 +22,30 @@ import qualified Physics.Hipmunk as H
 spawnRigidBody :: GameMonad ()
 spawnRigidBody = do
   leftPressed <- liftIO $ W.isMouseButtonPressed W.MouseLeft
-  when leftPressed $ do
+  rightPressed <- liftIO $ W.isMouseButtonPressed W.MouseRight
+  when rightPressed $ do
     win <- gets $ view gameWin
-    spr <- lift createSprite
-    tex <- lift $ textureFromFile "resources/sprites.png" Nothing
-    lift $ setTexture spr tex True
-    lift $ setTextureRect spr (G.IntRect 1 1 32 32)
     (S.Vec2i x y) <- liftIO $ W.getMousePosition (Just win)
     (#>) (Entity 0 NoAlias
                (SMap.fromList 
-                 [ (Renderable, sprite spr)
+                 [ (Renderable, sprite)
+                 , (Texture, textureFrom "resources/sprites.png")
+                 , (BoundingBox, rect 1 1 32 32)
                  , (Position, position x y)
-                 , (CollisionShape, physicalObj (H.Circle 32))
+                 , (StaticBody, staticObj (H.Circle 16))
+                 ]
+               ))
+    return ()
+  when leftPressed $ do
+    win <- gets $ view gameWin
+    (S.Vec2i x y) <- liftIO $ W.getMousePosition (Just win)
+    (#>) (Entity 0 NoAlias
+               (SMap.fromList 
+                 [ (Renderable, sprite)
+                 , (Texture, textureFrom "resources/sprites.png")
+                 , (BoundingBox, rect 1 1 32 32)
+                 , (Position, position x y)
+                 , (DynamicBody, dynamicObj (H.Circle 16))
                  ]
                ))
     return ()
