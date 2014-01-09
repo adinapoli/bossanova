@@ -12,7 +12,7 @@ import Data.StateVar
 
 instance Default PhysicsConfig where
   def = PhysicsConfig {
-      _defGravity       = V2 0.0 0.005
+      _defGravity       = V2 0.0 0.01
     , _defMass          = 1.0
     , _defFriction      = 1.0
     , _defElasticity    = 0.0

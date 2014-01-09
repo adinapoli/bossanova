@@ -5,6 +5,7 @@
 import Prelude hiding ((.), id)
 
 import Control.Wire
+import Control.Parallel.Strategies
 import Linear.V2
 import System.Random
 import Control.Lens hiding (at)
@@ -55,13 +56,6 @@ runAndDealloc st action = liftIO $ runSFML $ evalStateT action st
 --------------------------------------------------------------------------------
 showMenu :: GameMonad ()
 showMenu = do
-    m <- lift $ do
-      menuTex <- textureFromFile
-                 "resources/menu.png"
-                 (Just $ G.IntRect 0 0 640 480)
-      menuSpr <- createSprite
-      setTexture menuSpr menuTex True
-      return menuSpr
     (#>) (Entity 0 NoAlias
          (SMap.fromList [
                      (Renderable, sprite)
@@ -116,7 +110,7 @@ initState fMgr = do
            "The Lost Lens"
            [W.SFDefaultStyle]
            ctxSettings
-    --setFramerateLimit wnd 60
+    setFramerateLimit wnd 60
     return GameState {
         _gameWin    = wnd
       , _gameTime   = clockSession_
@@ -238,7 +232,8 @@ gameLoop = do
   lift $ clearRenderWindow wnd yellow
 
   -- Update the world
-  forM_ sys tick
+  sequence_ $ parMap rpar tick sys
+
 
   -- Update the game state
   (_, sess') <- stepSession sess

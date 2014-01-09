@@ -35,4 +35,11 @@ executable charles1
       stm,
       safe,
       Hipmunk,
-      StateVar
+      StateVar,
+      async,
+      parallel
+  ghc-options: 
+    -threaded
+    -eventlog
+    -O2
+    "-with-rtsopts=-N -ls -A5M"

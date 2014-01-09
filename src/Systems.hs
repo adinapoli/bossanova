@@ -2,6 +2,7 @@ module Systems where
 
 import Prelude hiding ((.), id)
 import Control.Monad
+import Control.Parallel.Strategies
 import Control.Wire hiding (at, when)
 import Control.Monad.Trans.State
 import Control.Monad.SFML
@@ -30,7 +31,7 @@ updateAll :: (Entity -> GameMonad ()) -> GameMonad ()
 updateAll fn = do
   eMgr <- gets $ view entityMgr
   let allEntities = Map.elems eMgr
-  mapM_ fn allEntities
+  sequence_ $ parMap rpar fn allEntities
   return ()
 
 
@@ -51,14 +52,15 @@ hipmunkSystem = System $ do
       case comp e ^. at StaticBody of
 
        Just (Component _ (CollisionShape (HipmunkUninitializedShape clbk))) -> do
-         when (e ^. alias == Special) $ liftIO $ print "init shp"
+         --when (e ^. alias == Special) $ liftIO $ print "init shp"
          newShp <- clbk e
          e #.= Component StaticBody
                (CollisionShape (HipmunkInitializedShape newShp))
 
-       Just (Component _ (CollisionShape (HipmunkInitializedShape sh))) -> do
-         newPos <- liftIO $ SV.get . H.position $ H.body sh
-         when (e ^. alias == Special) (liftIO $ print $ "S->" ++ show newPos)
+       --Just (Component _ (CollisionShape (HipmunkInitializedShape sh))) -> do
+       --  newPos <- liftIO $ SV.get . H.position $ H.body sh
+
+         --when (e ^. alias == Special) (liftIO $ print $ "S->" ++ show newPos)
 
        _ -> return ()
 
@@ -75,7 +77,7 @@ hipmunkSystem = System $ do
 
        Just (Component DynamicBody (CollisionShape (HipmunkInitializedShape sh)),
              Component _ (PosInt pos)) -> do
-         when (e ^. alias == Special) (liftIO $ print $ "-->" ++ show pos)
+         --when (e ^. alias == Special) (liftIO $ print $ "-->" ++ show pos)
          newPos <- liftIO $ SV.get . H.position $ H.body sh
          e #.= Component Position
                (PosInt (fmap truncate (fromHipmunkVector newPos)))
