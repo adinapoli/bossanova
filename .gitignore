@@ -9,3 +9,7 @@ src/*.hi
 src/flycheck*
 SFML-control
 *.eventlog
+*.prof
+*.ps
+*.hs
+*.aux

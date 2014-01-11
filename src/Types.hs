@@ -137,6 +137,7 @@ type EntityManager = Map.IntMap Entity
 data GameState = GameState {
     _gameWin     :: !G.RenderWindow
   , _gameTime    :: !(Session GameMonad (Timed NominalDiffTime ()))
+  , _timeWire    :: !(GameWire (Timed NominalDiffTime ()) Double)
   , _frameTime   :: !Word64
   , _fps         :: !Int
   , _entityMgr   :: !EntityManager

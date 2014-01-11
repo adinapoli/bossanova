@@ -114,6 +114,7 @@ initState fMgr = do
     return GameState {
         _gameWin    = wnd
       , _gameTime   = clockSession_
+      , _timeWire   = timeF
       , _frameTime  = 0
       , _fps        = 0
       , _entityMgr  = Map.empty
@@ -228,16 +229,21 @@ gameLoop = do
   gameState <- get
   sess <- gets $ view gameTime
   wnd  <- gets $ view gameWin
+  tm   <- gets $ view timeWire
   sys  <- gets $ view systems
   lift $ clearRenderWindow wnd yellow
 
   -- Update the world
   sequence_ $ parMap rpar tick sys
+  --mapM_ tick sys
 
 
   -- Update the game state
-  (_, sess') <- stepSession sess
+  (dt, sess') <- stepSession sess
+  (_, wire') <- stepWire tm dt (Right dt)
   gameTime .= sess'
+  timeWire .= wire'
+
   lift $ display wnd
 
   -- Update the stdGen

@@ -32,7 +32,7 @@ updateAll fn = do
   eMgr <- gets $ view entityMgr
   let allEntities = Map.elems eMgr
   sequence_ $ parMap rpar fn allEntities
-  return ()
+  --mapM_ fn allEntities
 
 
 --------------------------------------------------------------------------------
@@ -41,10 +41,12 @@ hipmunkSystem = System $ do
   pMgr <- gets $ view physicsMgr
   let wrld = pMgr ^. world
   sess <- gets $ view gameTime
-  (dt, _) <- stepSession sess
-  liftIO $ H.step wrld (fromIntegral . fromEnum $ dtime dt / 1e10)
-  updateAll $ \e -> do
+  tm   <- gets $ view timeWire
+  (s', _) <- stepSession sess
+  (Right dt, _) <- stepWire tm s' (Right s')
 
+  liftIO $ H.step wrld (dt / 10)
+  updateAll $ \e -> do
     updateStaticBody e
     updateDynamicBody e
   where
