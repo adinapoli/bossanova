@@ -8,3 +8,4 @@ src/*.o
 src/*.hi
 src/flycheck*
 SFML-control
+*.eventlog

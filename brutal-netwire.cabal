@@ -4,6 +4,12 @@ license-file:        LICENSE
 build-type:          Simple
 cabal-version:       >=1.8
 
+flag profile
+  default: False
+
+flag eventlog
+  default: False
+
 executable foundations
   main-is: src/Foundations.lhs
   build-depends:
@@ -13,17 +19,14 @@ executable foundations
 executable charles1
   main-is: Charles1.hs
   hs-source-dirs: src
-  other-modules:
-    Components
-    Entities
-    Types
-    Wires
+  
   build-depends:
       base >= 4 && < 5,
       parallel >= 3.2.0.4,
       netwire >= 5.0.0 && < 5.0.1,
-      SFML >= 0.2.0.0,
+      SFML >= 0.2.0.0 && < 0.3.0.0,
       SFML-control >= 0.2.0.2,
+      text >= 0.11 && < 1.0.0.0,
       lens,
       time,
       linear,
@@ -38,8 +41,20 @@ executable charles1
       StateVar,
       async,
       parallel
+
   ghc-options: 
     -threaded
-    -eventlog
     -O2
-    "-with-rtsopts=-N -ls -A5M"
+    "-with-rtsopts=-N"
+
+  if flag(profile)
+    ghc-options: 
+      -auto-all
+      -caf-all
+      -rtsopts
+      "-with-rtsopts=-N -p -hc"
+   
+  if flag(eventlog)
+    ghc-options: 
+      -eventlog
+      "-with-rtsopts=-N -ls"

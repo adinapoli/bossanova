@@ -5,6 +5,7 @@ import Control.Monad.SFML.Graphics
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.State
 import Control.Lens
+import qualified Data.Map.Strict as SMap
 
 import Types
 
@@ -27,4 +28,7 @@ initTextureClbk path = do
   aMgr <- gets $ view artMgr
   case aMgr ^. at path of
     Just t -> return t
-    Nothing -> lift $ textureFromFile path Nothing
+    Nothing -> do
+      tex <- lift $ textureFromFile path Nothing
+      artMgr .= SMap.insert path tex aMgr
+      return tex
