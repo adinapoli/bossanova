@@ -11,5 +11,5 @@ SFML-control
 *.eventlog
 *.prof
 *.ps
-*.hs
+*.hp
 *.aux
