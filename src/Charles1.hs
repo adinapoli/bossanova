@@ -46,7 +46,7 @@ main = runSFML $ do
       let manag = Managers {
         _entityMgr    = EntityManager 0 Map.empty
         , _physicsMgr = fMgr
-        , _artMgr     = ArtManager SMap.empty sQueue 
+        , _artMgr     = ArtManager SMap.empty 0 sQueue 
       }
       gameState  <- initState manag
       runAndDealloc gameState showMenu
@@ -174,12 +174,24 @@ buildEntities = do
                    , (Position, position 10 40)
                    ]))
 
+    (#>) (Entity 0 SpriteCounter
+         (SMap.fromList [
+                     (Renderable, text)
+                   , (Size, intSize 20)
+                   , (Colour, colour red)
+                   , (Caption, textCaption "Sprites: ")
+                   , (EventListener, onEvents [
+                       GameCallback displaySpritesCount
+                   ])
+                   , (Position, position 10 60)
+                   ]))
+
     (#>) (Entity 0 FPSCounter
          (SMap.fromList [
                      (Renderable, text)
                    , (Size, intSize 20)
                    , (Colour, colour red)
-                   , (Caption, textCaption "")
+                   , (Caption, textCaption "FPS: ")
                    , (EventListener, onEvents [
                        GameCallback updateAndDisplayFPS
                    ])
@@ -224,7 +236,7 @@ buildEntities = do
                      GameCallback (updateCaption playerKeyboard)
                    , GameCallback (toggleColour red green (blinkWire 1 2))
                  ])
-                 , (Position, position 10 60)
+                 , (Position, position 10 80)
                  ]
                ))
     return ()

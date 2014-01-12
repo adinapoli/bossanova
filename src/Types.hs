@@ -111,6 +111,7 @@ data Alias =
   | ThePlayer
   | BodyCounter
   | FPSCounter
+  | SpriteCounter
   | Special
   | PointCounter deriving (Show, Eq)
 
@@ -165,6 +166,7 @@ type PhysicsBodyId = Int
 --------------------------------------------------------------------------------
 data ArtManager = ArtManager {
     _textures   :: !(SMap.Map FilePath G.Texture)
+  , _sprites    :: !Int
   , _spritePool :: !(TQueue G.Sprite)
   }
 

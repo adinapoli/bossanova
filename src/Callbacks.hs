@@ -2,6 +2,8 @@ module Callbacks where
 
 import qualified SFML.Graphics as G
 import Control.Monad.SFML.Graphics
+import Control.Concurrent.STM
+import Control.Monad.SFML
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.State
 import Control.Lens
@@ -20,7 +22,14 @@ initTextClbk = do
 
 --------------------------------------------------------------------------------
 initSpriteClbk :: GameMonad G.Sprite
-initSpriteClbk = lift createSprite
+initSpriteClbk = do
+  spool <- gets . view $ managers . artMgr . spritePool
+  spr <- liftIO $ atomically $ tryReadTQueue spool
+  case spr of
+    Nothing -> do
+      managers . artMgr . sprites += 1
+      lift createSprite
+    Just s -> return s
 
 --------------------------------------------------------------------------------
 initTextureClbk :: FilePath -> GameMonad G.Texture

@@ -54,8 +54,8 @@ deallocatorSystem = System $ updateAll $ \e ->
     Just (Component _ (PosInt (V2 x y))) ->
       when (x > windowWidth || x < 0 ||
             y > windowHeight || y < 0) $ do
-           returnResources e
            (#.~) e
+           returnResources e
     _ -> return ()
 
 
@@ -76,20 +76,19 @@ returnResources e = returnPhysicResources >> returnRenderingResources
         managers . physicsMgr . bodyPool .= pool
       Nothing -> return ()
 
-    returnRenderingResources = return ()
-
+    returnRenderingResources = case comp e ^. at Renderable of
+      Just (Component _ (Sprite (InitializedSprite s))) -> do
+        spool <- gets . view $ managers . artMgr . spritePool
+        liftIO $ atomically $ writeTQueue spool s
+        managers . artMgr . spritePool .= spool
+            
 
 --------------------------------------------------------------------------------
 hipmunkSystem :: System
 hipmunkSystem = System $ do
   pMgr <- gets . view $ managers . physicsMgr
   let wrld = pMgr ^. world
-  sess <- gets $ view gameTime
-  tm   <- gets $ view timeWire
-  (s', _) <- stepSession sess
-  (Right dt, _) <- stepWire tm s' (Right s')
-
-  liftIO $ H.step wrld (1.0)
+  liftIO $ H.step wrld 1.0
   updateAll $ \e -> do
     updateStaticBody e
     updateDynamicBody e

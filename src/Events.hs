@@ -90,6 +90,18 @@ displayPhysicsBodyCount e = do
       return $ GameCallback displayPhysicsBodyCount
     Nothing -> return $ GameCallback displayPhysicsBodyCount
 
+------------------------------------------------------------------------------
+displaySpritesCount :: Entity -> GameMonad GameCallback
+displaySpritesCount e = do
+  artMgr <- gets . view $ managers . artMgr
+  bc  <- entityByAlias SpriteCounter
+  case (headMay bc >>= \e' -> comp e' ^. at Caption) of
+    Just (Component _ (TextCaption _)) -> do
+      let newT = "Sprites: " ++ show (artMgr ^. sprites)
+      let newC = Component Caption (TextCaption newT)
+      e #.= newC
+      return $ GameCallback displaySpritesCount
+    Nothing -> return $ GameCallback displaySpritesCount
 
 ------------------------------------------------------------------------------
 milliTime :: IO Word64
