@@ -4,6 +4,7 @@
 
 module Types where
 
+import Data.Vector
 import Data.Word
 import Linear.V2
 import System.Random
@@ -63,6 +64,7 @@ data ComponentData =
   | TextCaption !String
   | SFMLTexture !TextureState
   | SizeInt !Int
+  | CAnimation !AnimationState
   | IntRect !G.IntRect
   | RenderColour !G.Color
   | Events ![GameCallback]
@@ -189,6 +191,29 @@ data PhysicsConfig = PhysicsConfig {
   , _defMoment        :: H.Mass -> H.ShapeType -> H.Position -> H.Moment
 }
 
+newtype AnimationStepper = AnimationStepper {
+  stepAnimation :: Animation -> GameMonad (Animation, AnimationStepper)
+  }
+
+
+data AnimationFrame = AnimationFrame {
+    _frameBoundingBox :: !G.IntRect
+  , _frameSprite      :: !G.Sprite
+  }
+
+
+data Animation = Animation {
+    _frames :: !(Vector AnimationFrame)
+  , _animationIdx :: !Int
+  , _animationCallback :: !AnimationStepper
+  }
+
+
+--------------------------------------------------------------------------------
+data AnimationState =
+      UninitializedAnimation (GameMonad Animation)
+    | InitializedAnimation !Animation
+
 
 --------------------------------------------------------------------------------
 $(makeLenses ''GameState)
@@ -200,6 +225,8 @@ $(makeLenses ''EntityManager)
 $(makeLenses ''ArtManager)
 $(makeLenses ''PhysicsManager)
 $(makeLenses ''PhysicsConfig)
+$(makeLenses ''Animation)
+$(makeLenses ''AnimationFrame)
 $(makeLensesFor [("transform", "l_transform")] ''G.RenderStates)
 
 

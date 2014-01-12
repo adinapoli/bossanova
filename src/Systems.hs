@@ -2,6 +2,7 @@ module Systems where
 
 import Prelude hiding ((.), id)
 import Control.Monad
+import Data.Vector ((!))
 import Control.Parallel.Strategies
 import Control.Concurrent.STM
 import Linear.V2
@@ -306,3 +307,30 @@ inputSystem = System $ updateAll $ \e -> do
     updateKbWire wire k e = do
       let newK = compData .~ PlKbWire wire $ k
       e #.= newK
+
+--------------------------------------------------------------------------------
+-- Render and display the sprite in the current position.
+animationSystem :: System
+animationSystem = System $ updateAll $ \e ->
+  case liftM2 (,)
+       (comp e ^. at Position)
+       (comp e ^. at Renderable) of
+    Just (_,
+          Component _ (CAnimation (UninitializedAnimation clbk))) -> do
+      anim <- clbk
+      let newC = Component Renderable (CAnimation (InitializedAnimation anim))
+      e #.= newC
+    Just ( Component _ (PosInt currentPos)
+         , Component _ (CAnimation (InitializedAnimation anim))) -> do
+
+      let idx = _animationIdx anim
+      liftIO $ print $ show idx
+      let animFrame = _frames anim ! idx
+      (anim', step') <- stepAnimation (_animationCallback anim) anim
+      let newA = animationCallback .~ step' $ anim'
+      win <- gets $ view gameWin
+      let pos = Just $ translationFromV2 currentPos
+      lift $ drawSprite win (_frameSprite animFrame) pos
+      let newC = Component Renderable (CAnimation (InitializedAnimation newA))
+      e #.= newC
+    _ -> return ()

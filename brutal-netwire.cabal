@@ -62,3 +62,51 @@ executable charles1
       -O2
       -eventlog
       "-with-rtsopts=-N -ls"
+
+
+executable seagull
+  main-is: Seagull.hs
+  hs-source-dirs: src
+  
+  build-depends:
+      base >= 4 && < 5,
+      parallel >= 3.2.0.4,
+      netwire >= 5.0.0 && < 5.0.1,
+      SFML >= 0.2.0.0 && < 0.3.0.0,
+      SFML-control >= 0.2.0.2,
+      text >= 0.11 && < 1.0.0.0,
+      lens,
+      time,
+      linear,
+      vector,
+      data-default,
+      random,
+      transformers,
+      containers,
+      stm,
+      safe,
+      Hipmunk,
+      StateVar,
+      async,
+      parallel
+
+  ghc-options: 
+    -threaded
+    -O2
+    "-with-rtsopts=-N"
+
+  if flag(profile)
+    ghc-options: 
+      -threaded
+      -O2
+      -auto-all
+      -caf-all
+      -rtsopts
+      "-with-rtsopts=-N -p -hc"
+   
+  if flag(eventlog)
+    ghc-options: 
+      -threaded
+      -O2
+      -eventlog
+      "-with-rtsopts=-N -ls"

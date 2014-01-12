@@ -38,32 +38,36 @@ ifPressedGo code coords = mkGen_ $ \_ -> do
      else return . Left $ ()
 
 --------------------------------------------------------------------------------
-moveLeft :: GameWire NominalDiffTime (V2 Int)
-moveLeft = ifPressedGo W.KeyA (V2 (-5) 0)
+moveLeft :: Int -> GameWire NominalDiffTime (V2 Int)
+moveLeft dx = ifPressedGo W.KeyA (V2 (-dx) 0)
 
 
 --------------------------------------------------------------------------------
-moveRight :: GameWire NominalDiffTime (V2 Int)
-moveRight = ifPressedGo W.KeyD (V2 5 0)
+moveRight :: Int -> GameWire NominalDiffTime (V2 Int)
+moveRight dx = ifPressedGo W.KeyD (V2 dx 0)
 
 
 --------------------------------------------------------------------------------
-moveUp :: GameWire NominalDiffTime (V2 Int)
-moveUp = ifPressedGo W.KeyW (V2 0 (-5))
+moveUp :: Int -> GameWire NominalDiffTime (V2 Int)
+moveUp dy = ifPressedGo W.KeyW (V2 0 (-dy))
 
 
 --------------------------------------------------------------------------------
-moveDown :: GameWire NominalDiffTime (V2 Int)
-moveDown = ifPressedGo W.KeyS (V2 0 5)
+moveDown :: Int -> GameWire NominalDiffTime (V2 Int)
+moveDown dy = ifPressedGo W.KeyS (V2 0 (-dy))
 
 
 --------------------------------------------------------------------------------
 playerKeyboard :: GameWire NominalDiffTime (V2 Int)
-playerKeyboard = moveLeft <|>
-                 moveRight <|>
-                 moveUp <|> 
-                 moveDown <|>
+playerKeyboard = moveLeft 5 <|>
+                 moveRight 5 <|>
+                 moveUp 5 <|> 
+                 moveDown 5 <|>
                  inhibit ()
+
+--------------------------------------------------------------------------------
+seagullPlayerKeyboard :: Int -> GameWire NominalDiffTime (V2 Int)
+seagullPlayerKeyboard delta = moveLeft delta <|> moveRight delta <|> inhibit ()
 
 
 --------------------------------------------------------------------------------
