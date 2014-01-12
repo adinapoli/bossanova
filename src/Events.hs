@@ -77,9 +77,10 @@ toggleColour startCol endCol wire e = do
 
 
 
+------------------------------------------------------------------------------
 displayPhysicsBodyCount :: Entity -> GameMonad GameCallback
 displayPhysicsBodyCount e = do
-  pMgr <- gets $ view physicsMgr
+  pMgr <- gets . view $ managers . physicsMgr
   bc  <- entityByAlias BodyCounter
   case (headMay bc >>= \e' -> comp e' ^. at Caption) of
     Just (Component _ (TextCaption _)) -> do

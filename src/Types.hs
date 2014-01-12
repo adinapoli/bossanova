@@ -11,6 +11,7 @@ import Control.Wire
 import Control.Lens hiding (at)
 import Control.Monad.Trans.State
 import Control.Monad.SFML
+import Control.Concurrent.STM
 import qualified SFML.Graphics as G
 import qualified Data.IntMap.Strict as Map
 import qualified Data.Map.Strict as SMap
@@ -130,7 +131,10 @@ newtype GameCallback = GameCallback {
 
 
 --------------------------------------------------------------------------------
-type EntityManager = Map.IntMap Entity
+data EntityManager = EntityManager {
+    _entityCounter :: !Int
+  , _entities      :: !(Map.IntMap Entity)
+  }
 
 
 --------------------------------------------------------------------------------
@@ -140,11 +144,17 @@ data GameState = GameState {
   , _timeWire    :: !(GameWire (Timed NominalDiffTime ()) Double)
   , _frameTime   :: !Word64
   , _fps         :: !Int
-  , _entityMgr   :: !EntityManager
-  , _physicsMgr  :: !PhysicsManager
-  , _artMgr      :: !ArtManager
+  , _managers    :: !Managers
   , _randGen     :: !StdGen
   , _systems     :: ![System]
+}
+
+
+--------------------------------------------------------------------------------
+data Managers = Managers {
+    _entityMgr   :: !EntityManager
+  , _physicsMgr  :: !PhysicsManager
+  , _artMgr      :: !ArtManager
 }
 
 
@@ -153,13 +163,17 @@ type PhysicsBodyId = Int
 
 
 --------------------------------------------------------------------------------
-type ArtManager = SMap.Map FilePath G.Texture
+data ArtManager = ArtManager {
+    _textures   :: !(SMap.Map FilePath G.Texture)
+  , _spritePool :: !(TQueue G.Sprite)
+  }
 
 
 --------------------------------------------------------------------------------
 data PhysicsManager = PhysicsManager {
     _world      :: !H.Space
   , _bodies     :: !PhysicsBodyId
+  , _bodyPool   :: !(TQueue H.Body)
   , _physicsCfg :: !PhysicsConfig
 }
 
@@ -179,6 +193,9 @@ $(makeLenses ''GameState)
 $(makeLenses ''Entity)
 $(makeLenses ''Component)
 $(makeLenses ''GameCallback)
+$(makeLenses ''Managers)
+$(makeLenses ''EntityManager)
+$(makeLenses ''ArtManager)
 $(makeLenses ''PhysicsManager)
 $(makeLenses ''PhysicsConfig)
 $(makeLensesFor [("transform", "l_transform")] ''G.RenderStates)

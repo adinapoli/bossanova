@@ -5,9 +5,6 @@ import Control.Wire hiding (at)
 import Control.Lens
 import Control.Monad.Trans.State
 import qualified Data.Map.Strict as SMap
-import Control.Monad.Trans.Class (lift)
-import Control.Monad.SFML
-import qualified SFML.Graphics as G
 import qualified Data.IntMap.Strict as Map
 import Types
 
@@ -15,32 +12,29 @@ import Types
 -- | Add an entity. Returns the id of the created entity.
 (#>) :: Entity -> GameMonad Int
 (#>) e = do
-  currentId <- fmap Map.size (gets $ view entityMgr)
-  eMgr <- gets $ view entityMgr
-  entityMgr .= Map.insert currentId (eId .~ currentId $ e) eMgr
+  managers . entityMgr . entityCounter += 1
+  eMgr <- gets . view $ managers . entityMgr
+  let eMap = eMgr ^. entities
+  let currentId = eMgr ^. entityCounter
+  managers . entityMgr . entities .= Map.insert currentId (eId .~ currentId $ e) eMap
   return currentId
 
 
 --------------------------------------------------------------------------------
 -- | Delete an entity.
-(#~) :: Int -> GameMonad ()
-(#~) e = do
-  eMgr <- gets $ view entityMgr
-  entityMgr .= Map.delete e eMgr
+(#.~) :: Entity -> GameMonad ()
+(#.~) e = do
+  eMgr <- gets . view $ managers . entityMgr . entities
+  managers . entityMgr . entities .= Map.delete (_eId e) eMgr
+
 
 --------------------------------------------------------------------------------
 -- | Delete the last entity.
 popEntity :: GameMonad ()
 popEntity = do
-  currentId <- fmap Map.size (gets $ view entityMgr)
-  eMgr <- gets $ view entityMgr
-  entityMgr .= Map.delete (currentId - 1) eMgr
-  
---------------------------------------------------------------------------------
--- | Builds an entity manager from a list of entities.
-fromList :: [Entity] -> EntityManager
-fromList ls = Map.fromList $
-              map (\(cId, e) -> (cId, eId .~ cId $ e)) (zip [0..] ls)
+  eMgr <- gets . view $ managers . entityMgr
+  let currentId = view entityCounter eMgr
+  managers . entityMgr . entities .= Map.delete currentId (view entities eMgr)
 
 
 --------------------------------------------------------------------------------
@@ -49,7 +43,7 @@ fromList ls = Map.fromList $
 -- this method call is slow as it takes O(n).
 entityByAlias :: Alias -> GameMonad [Entity]
 entityByAlias a = do
-  eMgr <- gets $ view entityMgr
+  eMgr <- gets . view $ managers . entityMgr . entities
   return . map snd . Map.toList . Map.filter (\v -> v ^. alias == a) $ eMgr
 
 
@@ -60,10 +54,10 @@ entityByAlias a = do
 -- from the EntityManager.
 (#.=) :: Entity -> Component -> GameMonad ()
 ent #.= newC = do
-  eMgr <- gets $ view entityMgr
+  eMgr <- gets . view $ managers . entityMgr . entities
   case eMgr ^. at (_eId ent) of
     Just oldE -> do
       let tg = _compTag newC
       let newE = components .~ SMap.insert tg newC (_components oldE) $ ent
-      entityMgr .= Map.insert (_eId newE) newE eMgr
+      managers . entityMgr . entities .= Map.insert (_eId newE) newE eMgr
     Nothing -> return ()

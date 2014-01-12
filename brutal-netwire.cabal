@@ -49,6 +49,8 @@ executable charles1
 
   if flag(profile)
     ghc-options: 
+      -threaded
+      -O2
       -auto-all
       -caf-all
       -rtsopts
@@ -56,5 +58,7 @@ executable charles1
    
   if flag(eventlog)
     ghc-options: 
+      -threaded
+      -O2
       -eventlog
       "-with-rtsopts=-N -ls"

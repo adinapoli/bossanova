@@ -3,6 +3,8 @@ module Systems where
 import Prelude hiding ((.), id)
 import Control.Monad
 import Control.Parallel.Strategies
+import Control.Concurrent.STM
+import Linear.V2
 import Control.Wire hiding (at, when)
 import Control.Monad.Trans.State
 import Control.Monad.SFML
@@ -19,6 +21,7 @@ import Types
 import Components
 import Entities
 import Physics
+import Settings
 
 
 --------------------------------------------------------------------------------
@@ -29,23 +32,64 @@ comp = _components
 --------------------------------------------------------------------------------
 updateAll :: (Entity -> GameMonad ()) -> GameMonad ()
 updateAll fn = do
-  eMgr <- gets $ view entityMgr
+  eMgr <- gets . view $ managers . entityMgr . entities
   let allEntities = Map.elems eMgr
-  sequence_ $ parMap rpar fn allEntities
-  --mapM_ fn allEntities
+  --sequence_ $ parMap rpar fn allEntities
+  mapM_ fn allEntities
+
+
+
+--------------------------------------------------------------------------------
+-- For now it does not use the pool and the SFML camera.
+-- this causes the physic sprites to go crazy. why?
+-- It's also dangerous to naively acquire the entity and modify
+-- it and and interleave might be:
+-- a) Get hold of the underlying physic body (hipmunkSystem)
+-- b) The deallocator kicks in and delete the object (deallocatorSystem)
+-- c) HipmunkSystem tried to do something with the body. Crash!
+-- For this reason atm I'm running everything in a single thread.
+deallocatorSystem :: System
+deallocatorSystem = System $ updateAll $ \e ->
+  case comp e ^. at Position of
+    Just (Component _ (PosInt (V2 x y))) ->
+      when (x > windowWidth || x < 0 ||
+            y > windowHeight || y < 0) $ do
+           returnResources e
+           (#.~) e
+    _ -> return ()
+
+
+--------------------------------------------------------------------------------
+returnResources :: Entity -> GameMonad ()
+returnResources e = returnPhysicResources >> returnRenderingResources
+  where
+    returnPhysicResources = case comp e ^. at DynamicBody of
+      Just (Component DynamicBody (CollisionShape (HipmunkInitializedShape sh))) -> do
+        wrld <- gets . view $ managers . physicsMgr . world
+        pool <- gets . view $ managers . physicsMgr . bodyPool
+        let body = H.body sh
+        liftIO $ H.spaceRemove wrld body
+        liftIO $ H.spaceRemove wrld sh
+        liftIO $ H.resetForces body
+        liftIO $ H.velocity body SV.$= 0
+        liftIO $ atomically $ writeTQueue pool body
+        managers . physicsMgr . bodyPool .= pool
+      Nothing -> return ()
+
+    returnRenderingResources = return ()
 
 
 --------------------------------------------------------------------------------
 hipmunkSystem :: System
 hipmunkSystem = System $ do
-  pMgr <- gets $ view physicsMgr
+  pMgr <- gets . view $ managers . physicsMgr
   let wrld = pMgr ^. world
   sess <- gets $ view gameTime
   tm   <- gets $ view timeWire
   (s', _) <- stepSession sess
   (Right dt, _) <- stepWire tm s' (Right s')
 
-  liftIO $ H.step wrld (dt / 10)
+  liftIO $ H.step wrld (1.0)
   updateAll $ \e -> do
     updateStaticBody e
     updateDynamicBody e
@@ -189,8 +233,6 @@ textColourSystem = System $ updateAll $ \e ->
 
 --------------------------------------------------------------------------------
 -- Render and display the sprite in the current position.
--- TODO: Multicast for renderables?
--- e.g. blink
 rendererSystem :: System
 rendererSystem = System $ updateAll $ \e ->
   case comp e ^. at AffectRendering of

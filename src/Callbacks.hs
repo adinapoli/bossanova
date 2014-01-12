@@ -25,10 +25,10 @@ initSpriteClbk = lift createSprite
 --------------------------------------------------------------------------------
 initTextureClbk :: FilePath -> GameMonad G.Texture
 initTextureClbk path = do
-  aMgr <- gets $ view artMgr
+  aMgr <- gets . view $ managers . artMgr . textures
   case aMgr ^. at path of
     Just t -> return t
     Nothing -> do
       tex <- lift $ textureFromFile path Nothing
-      artMgr .= SMap.insert path tex aMgr
+      managers . artMgr . textures .= SMap.insert path tex aMgr
       return tex

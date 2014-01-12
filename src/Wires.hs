@@ -11,10 +11,6 @@ import Control.Monad.SFML.Window
 import Control.Lens hiding (at)
 import Control.Monad.Trans.State
 import Control.Monad.Trans.Class (lift)
-import Control.Monad.SFML
-import qualified SFML.Graphics as G
-import qualified Data.IntMap.Strict as Map
-import qualified Data.Traversable as T
 import Types
 
 

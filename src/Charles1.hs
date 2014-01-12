@@ -9,6 +9,7 @@ import Control.Parallel.Strategies
 import Linear.V2
 import System.Random
 import Control.Lens hiding (at)
+import Control.Concurrent.STM
 import qualified SFML.Window as W
 import qualified SFML.Graphics as G
 import Control.Monad.SFML
@@ -30,6 +31,7 @@ import Components
 import Wires
 import Systems
 import Events
+import Settings
 import Physics
 
 
@@ -40,7 +42,13 @@ import Physics
 main :: IO ()
 main = runSFML $ do
       fMgr <- liftIO createPhysicsManager
-      gameState  <- initState fMgr
+      sQueue <- liftIO newTQueueIO
+      let manag = Managers {
+        _entityMgr    = EntityManager 0 Map.empty
+        , _physicsMgr = fMgr
+        , _artMgr     = ArtManager SMap.empty sQueue 
+      }
+      gameState  <- initState manag
       runAndDealloc gameState showMenu
       flip evalStateT gameState $ do
         buildEntities
@@ -101,12 +109,12 @@ showMenu = do
 
 
 --------------------------------------------------------------------------------
-initState :: PhysicsManager -> SFML GameState
-initState fMgr = do
+initState :: Managers -> SFML GameState
+initState mgrs = do
     g <- liftIO getStdGen
     let ctxSettings = Just $ W.ContextSettings 24 8 4 3 3
     wnd <- createRenderWindow
-           (W.VideoMode 640 480 32)
+           (W.VideoMode windowWidth windowHeight 32)
            "The Lost Lens"
            [W.SFDefaultStyle]
            ctxSettings
@@ -117,10 +125,8 @@ initState fMgr = do
       , _timeWire   = timeF
       , _frameTime  = 0
       , _fps        = 0
-      , _entityMgr  = Map.empty
       , _randGen    = g
-      , _physicsMgr = fMgr
-      , _artMgr     = SMap.empty
+      , _managers   = mgrs
       , _systems    = [
           inputSystem
         , textureInitSystem
@@ -134,6 +140,7 @@ initState fMgr = do
         , eventSystem
         , newtonianSystem
         , hipmunkSystem
+        , deallocatorSystem
         ]
     }
 
@@ -226,30 +233,34 @@ buildEntities = do
 --------------------------------------------------------------------------------
 gameLoop :: GameMonad ()
 gameLoop = do
-  gameState <- get
-  sess <- gets $ view gameTime
   wnd  <- gets $ view gameWin
-  tm   <- gets $ view timeWire
   sys  <- gets $ view systems
   lift $ clearRenderWindow wnd yellow
-
-  -- Update the world
-  sequence_ $ parMap rpar tick sys
-  --mapM_ tick sys
-
-
-  -- Update the game state
-  (dt, sess') <- stepSession sess
-  (_, wire') <- stepWire tm dt (Right dt)
-  gameTime .= sess'
-  timeWire .= wire'
-
-  lift $ display wnd
-
-  -- Update the stdGen
-  randGen .= gameState ^. randGen . to (snd . next)
+  updateWorld sys
+  updateGameState wnd
 
   evt <- lift $ pollEvent wnd
   case evt of
     Just W.SFEvtClosed -> return ()
     _ -> gameLoop
+
+
+--------------------------------------------------------------------------------
+updateWorld :: [System] -> GameMonad ()
+updateWorld = do
+  --sequence_ . parMap rpar tick
+  mapM_ tick
+
+
+--------------------------------------------------------------------------------
+updateGameState :: G.RenderWindow -> GameMonad ()
+updateGameState wnd = do
+  gameState <- get
+  sess <- gets $ view gameTime
+  tm   <- gets $ view timeWire
+  (dt, sess') <- stepSession sess
+  (_, wire') <- stepWire tm dt (Right dt)
+  gameTime .= sess'
+  timeWire .= wire'
+  randGen .= gameState ^. randGen . to (snd . next)
+  lift $ display wnd
