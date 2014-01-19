@@ -23,6 +23,7 @@ import Components
 import Entities
 import Physics
 import Settings
+import Animation
 
 
 --------------------------------------------------------------------------------
@@ -322,15 +323,10 @@ animationSystem = System $ updateAll $ \e ->
       e #.= newC
     Just ( Component _ (PosInt currentPos)
          , Component _ (CAnimation (InitializedAnimation anim))) -> do
-
-      let idx = _animationIdx anim
-      liftIO $ print $ show idx
-      let animFrame = _frames anim ! idx
-      (anim', step') <- stepAnimation (_animationCallback anim) anim
-      let newA = animationCallback .~ step' $ anim'
-      win <- gets $ view gameWin
-      let pos = Just $ translationFromV2 currentPos
-      lift $ drawSprite win (_frameSprite animFrame) pos
-      let newC = Component Renderable (CAnimation (InitializedAnimation newA))
-      e #.= newC
+     win <- gets $ view gameWin
+     anim' <- stepAnimation anim
+     let pos = Just $ translationFromV2 currentPos
+     lift $ drawSprite win (_animationSprite anim') pos
+     let newC = Component Renderable (CAnimation (InitializedAnimation anim'))
+     e #.= newC
     _ -> return ()

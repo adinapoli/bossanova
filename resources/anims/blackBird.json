@@ -1,0 +1,28 @@
+{"frames": [
+
+{
+	"filename": "flyFly1.png",
+	"frame": {"x":2,"y":35,"w":72,"h":36},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":72,"h":36},
+	"sourceSize": {"w":72,"h":36}
+},
+{
+	"filename": "flyFly2.png",
+	"frame": {"x":2,"y":2,"w":75,"h":31},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":75,"h":31},
+	"sourceSize": {"w":75,"h":31}
+}],
+"meta": {
+	"app": "http://www.codeandweb.com/texturepacker ",
+	"version": "1.0",
+	"image": "blackBird.png",
+	"format": "RGBA8888",
+	"size": {"w":128,"h":128},
+	"scale": "1",
+	"smartupdate": "$TexturePacker:SmartUpdate:823291f9f3e4c6145fa6b761e9856ebb:6ea0c1e918b1f9d8bf3588e9465e9306:075c3702f5dde41874ed8f6cc4213a96$"
+}
+}

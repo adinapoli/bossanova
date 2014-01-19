@@ -8,10 +8,9 @@ import Control.Monad.SFML
 import Control.Monad.Trans.State
 import qualified SFML.Graphics as G
 import Safe hiding (at)
-import Data.Word
-import Data.Time.Clock.POSIX (getPOSIXTime)
 
 import Types
+import Utils
 import Systems
 import Wires
 import Entities
@@ -102,12 +101,6 @@ displaySpritesCount e = do
       e #.= newC
       return $ GameCallback displaySpritesCount
     Nothing -> return $ GameCallback displaySpritesCount
-
-------------------------------------------------------------------------------
-milliTime :: IO Word64
-milliTime = do
-    seconds <- realToFrac `fmap` getPOSIXTime :: IO Double
-    return $ round $ seconds * 1e3
 
 
 --------------------------------------------------------------------------------

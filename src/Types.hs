@@ -191,27 +191,21 @@ data PhysicsConfig = PhysicsConfig {
   , _defMoment        :: H.Mass -> H.ShapeType -> H.Position -> H.Moment
 }
 
-newtype AnimationStepper = AnimationStepper {
-  stepAnimation :: Animation -> GameMonad (Animation, AnimationStepper)
-  }
-
-
-data AnimationFrame = AnimationFrame {
-    _frameBoundingBox :: !G.IntRect
-  , _frameSprite      :: !G.Sprite
-  }
-
 
 data Animation = Animation {
-    _frames :: !(Vector AnimationFrame)
-  , _animationIdx :: !Int
-  , _animationCallback :: !AnimationStepper
+    _animationBoundingBoxes :: !(Vector G.IntRect)
+  , _animationTexture :: !G.Texture
+  , _animationSprite  :: !G.Sprite
+  , _animationPlaying :: !Bool
+  , _animationInternalTime :: !Word64
+  , _animationCurrentIdx :: !Int
+  , _animFrameTime :: !Double
   }
 
 
 --------------------------------------------------------------------------------
 data AnimationState =
-      UninitializedAnimation (GameMonad Animation)
+      UninitializedAnimation !(GameMonad Animation)
     | InitializedAnimation !Animation
 
 
@@ -226,7 +220,6 @@ $(makeLenses ''ArtManager)
 $(makeLenses ''PhysicsManager)
 $(makeLenses ''PhysicsConfig)
 $(makeLenses ''Animation)
-$(makeLenses ''AnimationFrame)
 $(makeLensesFor [("transform", "l_transform")] ''G.RenderStates)
 
 

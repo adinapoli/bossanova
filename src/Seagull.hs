@@ -158,9 +158,9 @@ buildEntities = do
     (#>) (Entity 0 NoAlias
                (SMap.fromList 
                  [ (Renderable, animation
-                                "resources/enemies.png"
-                                [G.IntRect 0 0 20 20
-                                ,G.IntRect 20 20 40 50] (holdFor 1 . periodic 3))
+                                "resources/anims/blackBird.json"
+                                1000
+                                )
                  , (Position, position 20 20)
                  ]
                ))

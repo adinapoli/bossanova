@@ -2,7 +2,8 @@
 module Wires where
 
 
-import Prelude hiding ((.), id)
+import Prelude hiding ((.), id, until)
+import Control.Applicative
 import Control.Wire
 import Linear.V2
 import FRP.Netwire.Move
@@ -106,3 +107,17 @@ stepTimed' wire ok ko = do
   case res of
     Right v -> ok v >> return wire'
     Left e -> ko e >> return wire'
+
+
+stepEvery :: NominalDiffTime
+          -> GameWire NominalDiffTime NominalDiffTime
+stepEvery interval = for interval . pure 0 -->
+                     onlyOnce --> stepEvery interval
+
+-- This works but is BAD, because is dependant upon time.
+-- What we really want is something which triggers ONCE.
+-- (for (interval + 0.01) --> stepEvery interval) . after interval
+
+onlyOnce :: GameWire NominalDiffTime NominalDiffTime
+onlyOnce = mkGen_ $ \a ->
+  return $ if mod (fromEnum a) 2 == 0 then Right a else Left ()
