@@ -24,6 +24,7 @@ import Entities
 import Physics
 import Settings
 import Animation
+import Utils
 
 
 --------------------------------------------------------------------------------
@@ -83,6 +84,7 @@ returnResources e = returnPhysicResources >> returnRenderingResources
         spool <- gets . view $ managers . artMgr . spritePool
         liftIO $ atomically $ writeTQueue spool s
         managers . artMgr . spritePool .= spool
+      _ -> return () -- don't dispose for now
             
 
 --------------------------------------------------------------------------------
@@ -285,8 +287,10 @@ inputSystem = System $ updateAll $ \e -> do
 
   where
     updateMouse e =
-      case SMap.lookup Mouse (comp e) of
-        Just (Component _ (MouseCallback clbk)) -> clbk
+      case SMap.lookup Callback (comp e) of
+        Just (Component _ (CCallback clbk)) -> do
+          clbk' <- runEvent clbk e
+          e #.= Component Callback (CCallback clbk')
         _ -> return ()
     updateKeyboard e =
       case liftM2 (,)

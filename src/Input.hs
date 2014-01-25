@@ -19,14 +19,14 @@ import qualified Physics.Hipmunk as H
 
 
 --------------------------------------------------------------------------------
-spawnRigidBody :: GameMonad ()
-spawnRigidBody = do
+spawnRigidBody :: GameCallback
+spawnRigidBody = GameCallback $ \_ -> do
   leftPressed <- liftIO $ W.isMouseButtonPressed W.MouseLeft
   rightPressed <- liftIO $ W.isMouseButtonPressed W.MouseRight
   when rightPressed $ do
     win <- gets $ view gameWin
     (S.Vec2i x y) <- liftIO $ W.getMousePosition (Just win)
-    (#>) (Entity 0 NoAlias
+    void $ (#>) (Entity 0 NoAlias
                (SMap.fromList 
                  [ (Renderable, sprite)
                  , (Texture, textureFrom "resources/sprites.png")
@@ -35,11 +35,10 @@ spawnRigidBody = do
                  , (StaticBody, staticObj (H.Circle 16))
                  ]
                ))
-    return ()
   when leftPressed $ do
     win <- gets $ view gameWin
     (S.Vec2i x y) <- liftIO $ W.getMousePosition (Just win)
-    (#>) (Entity 0 NoAlias
+    void $ (#>) (Entity 0 NoAlias
                (SMap.fromList 
                  [ (Renderable, sprite)
                  , (Texture, textureFrom "resources/sprites.png")
@@ -48,4 +47,4 @@ spawnRigidBody = do
                  , (DynamicBody, dynamicObj (H.Circle 16))
                  ]
                ))
-    return ()
+  return spawnRigidBody

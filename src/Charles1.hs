@@ -158,7 +158,7 @@ buildEntities = do
 
     -- spawner of sprites
     (#>) (Entity 0 NoAlias
-         (SMap.fromList [(Mouse, mouseCallback spawnRigidBody)
+         (SMap.fromList [(Callback, mouseCallback spawnRigidBody)
                    ]))
 
     -- counters

@@ -39,7 +39,8 @@ data Tag =
   | StaticBody
   | Joint
   | Keyboard
-  | Mouse
+  | Callback
+  | Timer
   | AffectRendering
   | EventListener
   | EventPublisher
@@ -70,7 +71,8 @@ data ComponentData =
   | Events ![GameCallback]
   | PosInt !(V2 Int)
   | ForceInt !(V2 Int)
-  | MouseCallback (GameMonad ())
+  | CTimer DiscreteTimer
+  | CCallback !GameCallback
   | CollisionShape !ShapeState
   | MustRenderWire (GameWire NominalDiffTime Bool)
   | PlKbWire (GameWire NominalDiffTime (V2 Int))
@@ -85,6 +87,13 @@ data TextState =
       UninitializedText (GameMonad G.Text)
     | InitializedText !G.Text
 
+
+--------------------------------------------------------------------------------
+data DiscreteTimer = DiscreteTimer
+  { _dtInternalTime :: !Word64
+  , _dtStepTime :: !Word64
+  } deriving Show
+       
 
 --------------------------------------------------------------------------------
 type Attached = Bool
@@ -220,6 +229,7 @@ $(makeLenses ''ArtManager)
 $(makeLenses ''PhysicsManager)
 $(makeLenses ''PhysicsConfig)
 $(makeLenses ''Animation)
+$(makeLenses ''DiscreteTimer)
 $(makeLensesFor [("transform", "l_transform")] ''G.RenderStates)
 
 

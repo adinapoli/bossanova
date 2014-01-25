@@ -160,7 +160,9 @@ buildEntities = do
                  [ (Renderable, animation
                                 "resources/anims/blackBird.json"
                                 1000
-                                )
+                   )
+                 , (Timer, discreteTimer 2000)
+                 , (EventListener, onEvents [spawnProjectile])
                  , (Position, position 20 20)
                  ]
                ))

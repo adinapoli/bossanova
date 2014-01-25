@@ -4,16 +4,23 @@ module Components where
 
 import Prelude hiding ((.), id)
 import Linear.V2
+import Data.Word
 import qualified SFML.Graphics as G
-import Control.Wire hiding (at)
+import Control.Wire hiding (at, when)
 import Control.Lens
 import Control.Monad.SFML
+import Control.Monad
 import qualified Physics.Hipmunk as H
+import Control.Monad.Trans.State
+import qualified Data.Map.Strict as SMap
 
 import Types
 import Wires
 import Physics
 import Callbacks
+import Animation
+import Entities
+import Utils
 
 
 --------------------------------------------------------------------------------
@@ -104,10 +111,37 @@ addShapeCallback fn typ e =
 
 
 --------------------------------------------------------------------------------
-mouseCallback :: GameMonad () -> Component
-mouseCallback = Component Mouse . MouseCallback
+mouseCallback :: GameCallback -> Component
+mouseCallback = Component Callback . CCallback
 
 
 --------------------------------------------------------------------------------
 rect :: Int -> Int -> Int -> Int -> Component
 rect x1 y1 x2 y2 = Component BoundingBox (IntRect (G.IntRect x1 y1 x2 y2))
+
+
+--------------------------------------------------------------------------------
+discreteTimer :: Word64 -> Component
+discreteTimer step = Component Timer (CTimer (DiscreteTimer 0 step))
+
+
+--------------------------------------------------------------------------------
+-- | Spawn a projectile.
+spawnProjectile :: GameCallback
+spawnProjectile = GameCallback $ \e ->
+  case _components e ^. at Timer of
+    Just (Component _ (CTimer (DiscreteTimer internalTime stepInterval))) -> do
+      now <- liftIO milliTime
+      when (now - internalTime >= stepInterval) $ do
+        let newT = DiscreteTimer now stepInterval
+        e #.= Component Timer (CTimer newT)
+        void $
+          (#>) (Entity 0 NoAlias
+              (SMap.fromList 
+                [ (Renderable, animation "resources/anims/projectile.json" 500)
+                , (Position, position 30 40)
+                , (LinearForce, linearForce $ V2 0 1)
+                ]
+              ))
+      return spawnProjectile
+    _ -> return spawnProjectile
