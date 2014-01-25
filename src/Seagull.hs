@@ -166,12 +166,22 @@ buildEntities = do
                  , (Position, position 20 20)
                  ]
                ))
+    (#>) (Entity 0 NoAlias
+               (SMap.fromList 
+                 [ (Renderable, animation
+                                "resources/anims/snail.json"
+                                1000
+                   )
+                 , (Position, position 70 430)
+                 ]
+               ))
     (#>) (Entity 0 ThePlayer
                (SMap.fromList 
-                 [ (Renderable, sprite)
-                 , (Texture, textureFrom "resources/sprites.png")
-                 , (BoundingBox, rect 34 1 32 32)
-                 , (Position, position 330 440)
+                 [(Renderable, animation
+                                "resources/anims/player.json"
+                                300
+                   )
+                 , (Position, position 330 380)
                  , (Keyboard, keyboard (seagullPlayerKeyboard 5))
                  ]
                ))

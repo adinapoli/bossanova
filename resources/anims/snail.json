@@ -1,0 +1,18 @@
+{"frames": [
+{
+		"frame": {"x":0, "y":32, "w":54, "h":31},
+		"spriteSourceSize": {"x":0,"y":0,"w":54,"h":31},
+		"sourceSize": {"w":54,"h":31}
+},
+{
+		"frame": {"x":0, "y":0, "w":57, "h":31},
+		"spriteSourceSize": {"x":0,"y":0,"w":57,"h":31},
+		"sourceSize": {"w":57,"h":31}
+}
+],
+"meta": {
+	"image": "snail.png",
+	"size": {"w": 58, "h": 64},
+	"scale": "1"
+}
+}
