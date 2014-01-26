@@ -155,17 +155,7 @@ buildEntities = do
                  , (Position, position 0 0)
                  ]
                ))
-    (#>) (Entity 0 NoAlias
-               (SMap.fromList 
-                 [ (Renderable, animation
-                                "resources/anims/blackBird.json"
-                                1000
-                   )
-                 , (Timer, discreteTimer 2000)
-                 , (EventListener, onEvents [spawnProjectile])
-                 , (Position, position 20 20)
-                 ]
-               ))
+    (#>) enemy
     (#>) (Entity 0 NoAlias
                (SMap.fromList 
                  [ (Renderable, animation
@@ -173,6 +163,14 @@ buildEntities = do
                                 1000
                    )
                  , (Position, position 70 430)
+                 ]
+               ))
+    (#>) (Entity 0 NoAlias
+               (SMap.fromList 
+                 [ (Renderable, animation
+                                "resources/anims/sun.json"
+                                60)
+                 , (Position, position 500 (-100))
                  ]
                ))
     (#>) (Entity 0 ThePlayer
@@ -186,6 +184,17 @@ buildEntities = do
                  ]
                ))
     return ()
+
+
+enemy :: Entity
+enemy = Entity 0 Enemy
+  (SMap.fromList 
+    [ (Renderable, animation "resources/anims/blackBird.json" 800)
+    , (Timer, discreteTimer 2000)
+    , (EventListener, onEvents [spawnProjectile])
+    , (Position, position 20 20)
+    ]
+  )
 
 
 --------------------------------------------------------------------------------

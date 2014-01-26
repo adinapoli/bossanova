@@ -125,12 +125,18 @@ discreteTimer :: Word64 -> Component
 discreteTimer step = Component Timer (CTimer (DiscreteTimer 0 step))
 
 
+noop :: Component
+noop = Component Tagless Void
+
 --------------------------------------------------------------------------------
 -- | Spawn a projectile.
 spawnProjectile :: GameCallback
 spawnProjectile = GameCallback $ \e ->
-  case _components e ^. at Timer of
-    Just (Component _ (CTimer (DiscreteTimer internalTime stepInterval))) -> do
+  case liftM2 (,)
+       (_components e ^. at Timer)
+       (_components e ^. at Position) of
+    Just ( Component _ (CTimer (DiscreteTimer internalTime stepInterval))
+         , Component _ (PosInt (V2 x y))) -> do
       now <- liftIO milliTime
       when (now - internalTime >= stepInterval) $ do
         let newT = DiscreteTimer now stepInterval
@@ -139,8 +145,9 @@ spawnProjectile = GameCallback $ \e ->
           (#>) (Entity 0 NoAlias
               (SMap.fromList 
                 [ (Renderable, animation "resources/anims/projectile.json" 500)
-                , (Position, position 30 40)
+                , (Position, position (x + truncate (fromIntegral x/2.0)) (y + 10))
                 , (LinearForce, linearForce $ V2 0 1)
+                , (Disposable, noop)
                 ]
               ))
       return spawnProjectile

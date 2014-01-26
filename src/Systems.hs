@@ -53,8 +53,10 @@ updateAll fn = do
 -- For this reason atm I'm running everything in a single thread.
 deallocatorSystem :: System
 deallocatorSystem = System $ updateAll $ \e ->
-  case comp e ^. at Position of
-    Just (Component _ (PosInt (V2 x y))) ->
+  case liftM2 (,)
+       (comp e ^. at Position)
+       (comp e ^. at Disposable) of
+    Just (Component _ (PosInt (V2 x y)), _) ->
       when (x > windowWidth || x < 0 ||
             y > windowHeight || y < 0) $ do
            (#.~) e

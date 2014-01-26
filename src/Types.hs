@@ -31,6 +31,7 @@ type GameMonad = StateT GameState SFML
 --------------------------------------------------------------------------------
 data Tag =
     Position
+  | Tagless
   | Velocity
   | LinearForce
   | DynamicBody
@@ -44,6 +45,7 @@ data Tag =
   | AffectRendering
   | EventListener
   | EventPublisher
+  | Disposable
   | EventHolder
   | Size
   | Colour
@@ -75,6 +77,7 @@ data ComponentData =
   | CCallback !GameCallback
   | CollisionShape !ShapeState
   | MustRenderWire (GameWire NominalDiffTime Bool)
+  | Void
   | PlKbWire (GameWire NominalDiffTime (V2 Int))
 
 --------------------------------------------------------------------------------
@@ -124,6 +127,7 @@ data Alias =
   | FPSCounter
   | SpriteCounter
   | Special
+  | Enemy
   | PointCounter deriving (Show, Eq)
 
 
