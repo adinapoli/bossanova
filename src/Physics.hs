@@ -7,6 +7,7 @@ import Control.Monad.SFML
 import Control.Monad.Trans.State
 import Control.Lens
 import Data.Default
+import Data.IORef
 import Linear.V2
 import Data.StateVar
 
@@ -22,16 +23,31 @@ instance Default PhysicsConfig where
 
 
 --------------------------------------------------------------------------------
+defaultCollisionHandler :: IORef [(Shape, Shape)] -> CollisionHandler
+defaultCollisionHandler collPool = Handler Nothing Nothing (Just postSolveHldr) Nothing
+  where
+    postSolveHldr = do
+      shapesInvolved <- shapes
+      liftIO $ modifyIORef collPool (shapesInvolved :)
+      lenP <- fmap length (liftIO $ readIORef collPool)
+      liftIO $ print (show lenP)
+
+
+--------------------------------------------------------------------------------
 createPhysicsManager :: IO PhysicsManager
 createPhysicsManager = do
   initChipmunk
   newWorld <- newSpace
   queue <- newTQueueIO
+  collPool <- newIORef []
+
   let cfg = def
   gravity newWorld $= toHipmunkVector (cfg ^. defGravity)
+  setDefaultCollisionHandler newWorld (defaultCollisionHandler collPool)
   return PhysicsManager {
       _world = newWorld
     , _bodies = 0
+    , _collisionPool = collPool
     , _bodyPool = queue
     , _physicsCfg = def
   }

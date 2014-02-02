@@ -44,7 +44,7 @@ main = runSFML $ do
       let manag = Managers {
         _entityMgr    = EntityManager 0 Map.empty
         , _physicsMgr = fMgr
-        , _artMgr     = ArtManager SMap.empty 0 sQueue 
+        , _artMgr     = ArtManager SMap.empty 0 sQueue
       }
       gameState  <- initState manag
       --runAndDealloc gameState showMenu
@@ -100,8 +100,8 @@ showMenu = do
         wantsToPlay <- lift $ pollEvent win
         case wantsToPlay of
          Just (W.SFEvtKeyPressed W.KeyReturn _ _ _ _) -> do
-            popEntity 
-            popEntity 
+            popEntity
+            popEntity
             return ()
          _ -> showMenuLoop
 
@@ -148,16 +148,18 @@ initState mgrs = do
 buildEntities :: GameMonad ()
 buildEntities = do
     (#>) (Entity 0 NoAlias
-               (SMap.fromList 
+               (SMap.fromList
                  [ (Renderable, sprite)
                  , (Texture, textureFrom "resources/beach.png")
                  , (BoundingBox, rect 0 0 640 480)
                  , (Position, position 0 0)
                  ]
                ))
-    (#>) enemy
+    (#>) (enemy (V2 20 20))
+    (#>) (enemy (V2 200 20))
+    (#>) (enemy (V2 400 20))
     (#>) (Entity 0 NoAlias
-               (SMap.fromList 
+               (SMap.fromList
                  [ (Renderable, animation
                                 "resources/anims/snail.json"
                                 1000
@@ -166,7 +168,7 @@ buildEntities = do
                  ]
                ))
     (#>) (Entity 0 NoAlias
-               (SMap.fromList 
+               (SMap.fromList
                  [ (Renderable, animation
                                 "resources/anims/sun.json"
                                 60)
@@ -174,7 +176,7 @@ buildEntities = do
                  ]
                ))
     (#>) (Entity 0 ThePlayer
-               (SMap.fromList 
+               (SMap.fromList
                  [(Renderable, animation
                                 "resources/anims/player.json"
                                 300
@@ -186,13 +188,13 @@ buildEntities = do
     return ()
 
 
-enemy :: Entity
-enemy = Entity 0 Enemy
-  (SMap.fromList 
+enemy :: V2 Int -> Entity
+enemy (V2 x y) = Entity 0 Enemy
+  (SMap.fromList
     [ (Renderable, animation "resources/anims/blackBird.json" 800)
     , (Timer, discreteTimer 2000)
     , (EventListener, onEvents [spawnProjectile])
-    , (Position, position 20 20)
+    , (Position, position x y)
     ]
   )
 

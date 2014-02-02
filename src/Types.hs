@@ -6,6 +6,7 @@ module Types where
 
 import Data.Vector
 import Data.Word
+import Data.IORef
 import Linear.V2
 import System.Random
 import Control.Wire
@@ -188,10 +189,11 @@ data ArtManager = ArtManager {
 
 --------------------------------------------------------------------------------
 data PhysicsManager = PhysicsManager {
-    _world      :: !H.Space
-  , _bodies     :: !PhysicsBodyId
-  , _bodyPool   :: !(TQueue H.Body)
-  , _physicsCfg :: !PhysicsConfig
+    _world         :: !H.Space
+  , _bodies        :: !PhysicsBodyId
+  , _bodyPool      :: !(TQueue H.Body)
+  , _collisionPool :: !(IORef [(H.Shape, H.Shape)])
+  , _physicsCfg    :: !PhysicsConfig
 }
 
 

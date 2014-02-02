@@ -145,7 +145,7 @@ spawnProjectile = GameCallback $ \e ->
           (#>) (Entity 0 NoAlias
               (SMap.fromList 
                 [ (Renderable, animation "resources/anims/projectile.json" 500)
-                , (Position, position (x + truncate (fromIntegral x/2.0)) (y + 10))
+                , (Position, position (x + 10) (y + 10))
                 , (LinearForce, linearForce $ V2 0 1)
                 , (Disposable, noop)
                 ]
