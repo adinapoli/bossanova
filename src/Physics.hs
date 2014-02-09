@@ -4,6 +4,7 @@ import Physics.Hipmunk
 import Control.Concurrent.STM
 import Types
 import Control.Monad.SFML
+import Control.Monad
 import Control.Monad.Trans.State
 import Control.Lens
 import Data.Default
@@ -29,9 +30,8 @@ defaultCollisionHandler collPool = Handler Nothing Nothing (Just postSolveHldr) 
     postSolveHldr = do
       shapesInvolved <- shapes
       liftIO $ modifyIORef collPool (shapesInvolved :)
-      lenP <- fmap length (liftIO $ readIORef collPool)
-      liftIO $ print (show lenP)
-
+      fmap length (liftIO $ readIORef collPool)
+      return ()
 
 --------------------------------------------------------------------------------
 createPhysicsManager :: IO PhysicsManager
@@ -43,7 +43,7 @@ createPhysicsManager = do
 
   let cfg = def
   gravity newWorld $= toHipmunkVector (cfg ^. defGravity)
-  setDefaultCollisionHandler newWorld (defaultCollisionHandler collPool)
+  --setDefaultCollisionHandler newWorld (defaultCollisionHandler collPool)
   return PhysicsManager {
       _world = newWorld
     , _bodies = 0
@@ -65,6 +65,9 @@ destroyPhysicManager = do
 toHipmunkVector :: V2 Double -> Vector
 toHipmunkVector (V2 x y) = Vector x y
 
+--------------------------------------------------------------------------------
+toHipmunkVectorI :: V2 Int -> Vector
+toHipmunkVectorI (V2 x y) = Vector (fromIntegral x) (fromIntegral y)
 
 --------------------------------------------------------------------------------
 fromHipmunkVector :: Vector -> V2 Double
@@ -126,8 +129,6 @@ addShape' mss momt isStatic shpTyp pos = do
   liftIO $ do
     friction sh   $= defaultFriction
     elasticity sh $= defaultElasticity
-  liftIO $ spaceAdd wrld bd
-  liftIO $ if isStatic
-     then spaceAdd wrld (Static sh)
-     else spaceAdd wrld sh
+  unless isStatic $ liftIO $ spaceAdd wrld bd
+  liftIO $ spaceAdd wrld sh
   return sh

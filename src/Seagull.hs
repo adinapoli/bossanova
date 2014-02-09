@@ -181,6 +181,7 @@ buildEntities = do
                                 "resources/anims/player.json"
                                 300
                    )
+                 , (StaticBody, staticObj (H.Circle 30))
                  , (Position, position 330 380)
                  , (Keyboard, keyboard (seagullPlayerKeyboard 5))
                  ]

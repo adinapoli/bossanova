@@ -99,22 +99,25 @@ hipmunkSystem = System $ do
     updateStaticBody e
     updateDynamicBody e
   where
+ 
+    ----------------------------------------------------------------------------
     updateStaticBody e = 
       case comp e ^. at StaticBody of
 
        Just (Component _ (CollisionShape (HipmunkUninitializedShape clbk))) -> do
-         --when (e ^. alias == Special) $ liftIO $ print "init shp"
          newShp <- clbk e
          e #.= Component StaticBody
                (CollisionShape (HipmunkInitializedShape newShp))
 
-       --Just (Component _ (CollisionShape (HipmunkInitializedShape sh))) -> do
-       --  newPos <- liftIO $ SV.get . H.position $ H.body sh
-
-         --when (e ^. alias == Special) (liftIO $ print $ "S->" ++ show newPos)
+       Just (Component _ (CollisionShape (HipmunkInitializedShape sh))) -> do
+         case comp e ^. at Position of
+           Just (Component _ (PosInt pos)) -> do
+             liftIO $ H.position (H.body sh) SV.$= toHipmunkVectorI pos
+           Nothing -> return ()
 
        _ -> return ()
 
+    ----------------------------------------------------------------------------
     updateDynamicBody e =
       case liftM2 (,)
            (comp e ^. at DynamicBody)
@@ -127,8 +130,7 @@ hipmunkSystem = System $ do
                (CollisionShape (HipmunkInitializedShape newShp))
 
        Just (Component DynamicBody (CollisionShape (HipmunkInitializedShape sh)),
-             Component _ (PosInt pos)) -> do
-         --when (e ^. alias == Special) (liftIO $ print $ "-->" ++ show pos)
+             Component _ (PosInt _)) -> do
          newPos <- liftIO $ SV.get . H.position $ H.body sh
          e #.= Component Position
                (PosInt (fmap truncate (fromHipmunkVector newPos)))

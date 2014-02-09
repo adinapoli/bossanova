@@ -146,7 +146,7 @@ spawnProjectile = GameCallback $ \e ->
               (SMap.fromList 
                 [ (Renderable, animation "resources/anims/projectile.json" 500)
                 , (Position, position (x + 10) (y + 10))
-                , (LinearForce, linearForce $ V2 0 1)
+                , (DynamicBody, dynamicObj (H.Circle 16))
                 , (Disposable, noop)
                 ]
               ))
