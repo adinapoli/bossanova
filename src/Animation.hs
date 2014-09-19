@@ -6,7 +6,7 @@ import qualified Data.Vector as V
 import Data.String
 import Data.Aeson
 import Data.Maybe
-import Control.Lens.Aeson
+import Data.Aeson.Lens
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Text as T
 import Control.Monad
