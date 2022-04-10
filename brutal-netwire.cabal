@@ -10,6 +10,49 @@ flag profile
 flag eventlog
   default: False
 
+library
+  hs-source-dirs: src
+  exposed-modules:
+    Animation
+    Art
+    Callbacks
+    Components
+    Entities
+    Events
+    Foundations
+    Input
+    Particles
+    Physics
+    Settings
+    Systems
+    Types
+    Utils
+    Wires
+  build-depends:
+      base >= 4 && < 5,
+      parallel >= 3.2.0.4,
+      netwire >= 5.0.0 && < 5.0.4,
+      SFML >= 0.2.0.0 && < 2.4,
+      SFML-control >= 0.2.0.2,
+      text >= 0.11,
+      lens,
+      aeson,
+      lens-aeson,
+      bytestring,
+      time,
+      linear,
+      vector,
+      data-default,
+      random,
+      transformers,
+      containers,
+      stm,
+      safe,
+      Hipmunk,
+      StateVar,
+      async,
+      parallel
+
 executable foundations
   main-is: src/Foundations.lhs
   build-depends:
@@ -18,8 +61,9 @@ executable foundations
 
 executable charles1
   main-is: Charles1.hs
-  hs-source-dirs: src
+  hs-source-dirs: apps
   build-depends:
+      brutal-netwire -any,
       base >= 4 && < 5,
       parallel >= 3.2.0.4,
       netwire >= 5.0.0 && < 5.0.4,
@@ -68,9 +112,10 @@ executable charles1
 
 executable seagull
   main-is: Seagull.hs
-  hs-source-dirs: src
+  hs-source-dirs: apps
 
   build-depends:
+      brutal-netwire -any,
       base >= 4 && < 5,
       parallel >= 3.2.0.4,
       netwire >= 5.0.0 && < 5.0.4,

@@ -1,5 +1,5 @@
 > {-# LANGUAGE RankNTypes #-}
-> module Main where
+> module Foundations where
 
 A Wire was complicated enough but now it's type features six parameters:
 

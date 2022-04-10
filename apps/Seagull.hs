@@ -33,12 +33,10 @@ import Systems
 import Events
 import Settings
 import Physics
+import Animation
 
 
 --------------------------------------------------------------------------------
--- MAIN STARTS HERE
--- | not worring about resource alloc/dealloc. Atm everything is retained in
--- memory.
 main :: IO ()
 main = runSFML $ do
       fMgr <- liftIO createPhysicsManager
@@ -46,10 +44,10 @@ main = runSFML $ do
       let manag = Managers {
         _entityMgr    = EntityManager 0 Map.empty
         , _physicsMgr = fMgr
-        , _artMgr     = ArtManager SMap.empty 0 sQueue 
+        , _artMgr     = ArtManager SMap.empty 0 sQueue
       }
       gameState  <- initState manag
-      runAndDealloc gameState showMenu
+      --runAndDealloc gameState showMenu
       flip evalStateT gameState $ do
         buildEntities
         gameLoop
@@ -60,6 +58,11 @@ main = runSFML $ do
 runAndDealloc :: GameState -> GameMonad a -> SFML ()
 runAndDealloc st action = liftIO $ runSFML $ evalStateT action st
 
+gameWidth :: Int
+gameWidth = 2048
+
+gameHeight :: Int
+gameHeight = 1024
 
 --------------------------------------------------------------------------------
 showMenu :: GameMonad ()
@@ -68,7 +71,7 @@ showMenu = do
          (SMap.fromList [
                      (Renderable, sprite)
                    , (Texture, textureFrom "resources/menu.png")
-                   , (BoundingBox, rect 0 0 640 480)
+                   , (BoundingBox, rect 0 0 gameWidth gameHeight)
                    , (Position, position 0 0)
                    ]))
     (#>) (Entity 0 NoAlias
@@ -102,8 +105,8 @@ showMenu = do
         wantsToPlay <- lift $ pollEvent win
         case wantsToPlay of
          Just (W.SFEvtKeyPressed W.KeyReturn _ _ _ _) -> do
-            popEntity 
-            popEntity 
+            popEntity
+            popEntity
             return ()
          _ -> showMenuLoop
 
@@ -115,10 +118,11 @@ initState mgrs = do
     let ctxSettings = Just $ W.ContextSettings 24 8 4 2 1 []
     wnd <- createRenderWindow
            (W.VideoMode windowWidth windowHeight 32)
-           "The Lost Lens"
+           "Seagull Madness"
            [W.SFDefaultStyle]
            ctxSettings
     setFramerateLimit wnd 60
+    setWindowSize wnd (W.Vec2u (fromIntegral gameWidth) (fromIntegral gameHeight))
     return GameState {
         _gameWin    = wnd
       , _gameTime   = clockSession_
@@ -141,6 +145,7 @@ initState mgrs = do
         , newtonianSystem
         , hipmunkSystem
         , deallocatorSystem
+        , animationSystem
         ]
     }
 
@@ -148,98 +153,57 @@ initState mgrs = do
 ------------------------------------------------------------------------------
 buildEntities :: GameMonad ()
 buildEntities = do
-    -- screen bounds
     (#>) (Entity 0 NoAlias
-               (SMap.fromList
-                 [(Position, position 0 440)
-                 ,(StaticBody, staticObj
-                    (H.LineSegment (H.Vector 0 440) (H.Vector 640 440) 1.0))
-                 ]))
-
-    -- spawner of sprites
-    (#>) (Entity 0 NoAlias
-         (SMap.fromList [(Callback, mouseCallback spawnRigidBody)
-                   ]))
-
-    -- counters
-    (#>) (Entity 0 BodyCounter
-         (SMap.fromList [
-                     (Renderable, text)
-                   , (Size, intSize 20)
-                   , (Colour, colour red)
-                   , (Caption, textCaption "")
-                   , (EventListener, onEvents [
-                       GameCallback displayPhysicsBodyCount
-                   ])
-                   , (Position, position 10 40)
-                   ]))
-
-    (#>) (Entity 0 SpriteCounter
-         (SMap.fromList [
-                     (Renderable, text)
-                   , (Size, intSize 20)
-                   , (Colour, colour red)
-                   , (Caption, textCaption "Sprites: ")
-                   , (EventListener, onEvents [
-                       GameCallback displaySpritesCount
-                   ])
-                   , (Position, position 10 60)
-                   ]))
-
-    (#>) (Entity 0 FPSCounter
-         (SMap.fromList [
-                     (Renderable, text)
-                   , (Size, intSize 20)
-                   , (Colour, colour red)
-                   , (Caption, textCaption "FPS: ")
-                   , (EventListener, onEvents [
-                       GameCallback updateAndDisplayFPS
-                   ])
-                   , (Position, position 10 10)
-                   ]))
-
-    (#>) (Entity 0 NoAlias
-               (SMap.fromList
-                 [(Renderable, sprite)
-                 ,(Texture, textureFrom "resources/sprites.png")
-                 ,(BoundingBox, rect 1 1 32 32)
-                 ,(Position, position 100 100)
-                 ,(LinearForce, linearForce (V2 0 1))
-                 ]))
-
-    (#>) (Entity 0 Special
                (SMap.fromList
                  [ (Renderable, sprite)
-                 , (Texture, textureFrom "resources/sprites.png")
-                 , (BoundingBox, rect 1 1 32 32)
-                 , (Position, position 100 0)
-                 , (StaticBody, staticObj (H.Circle 16))
-                 ]))
-
-    (#>) (Entity 0 ThePlayer
-               (SMap.fromList 
-                 [ (Renderable, sprite)
-                 , (Texture, textureFrom "resources/sprites.png")
-                 , (BoundingBox, rect 34 1 32 32)
-                 , (Position, position 20 300)
-                 , (Keyboard, keyboard playerKeyboard)
+                 , (Texture, textureFrom "resources/beach.png")
+                 , (BoundingBox, rect 0 0 gameWidth gameHeight)
+                 , (Position, position 0 0)
                  ]
                ))
-
-    (#>) (Entity 0 PointCounter
+    (#>) (enemy (V2 20 20))
+    (#>) (enemy (V2 200 20))
+    (#>) (enemy (V2 400 20))
+    (#>) (Entity 0 NoAlias
                (SMap.fromList
-                 [ (Renderable, text)
-                 , (Size, intSize 20)
-                 , (Colour, colour red)
-                 , (Caption, textCaption "Move the player to update")
-                 , (EventListener, onEvents [
-                     GameCallback (updateCaption playerKeyboard)
-                   , GameCallback (toggleColour red green (blinkWire 1 2))
-                 ])
-                 , (Position, position 10 80)
+                 [ (Renderable, animation
+                                "resources/anims/snail.json"
+                                1000
+                   )
+                 , (Position, position 70 430)
+                 ]
+               ))
+    (#>) (Entity 0 NoAlias
+               (SMap.fromList
+                 [ (Renderable, animation
+                                "resources/anims/sun.json"
+                                60)
+                 , (Position, position 500 (-100))
+                 ]
+               ))
+    (#>) (Entity 0 ThePlayer
+               (SMap.fromList
+                 [(Renderable, animation
+                                "resources/anims/player.json"
+                                300
+                   )
+                 , (StaticBody, staticObj (H.Circle 30))
+                 , (Position, position 330 380)
+                 , (Keyboard, keyboard (seagullPlayerKeyboard 5))
                  ]
                ))
     return ()
+
+
+enemy :: V2 Int -> Entity
+enemy (V2 x y) = Entity 0 Enemy
+  (SMap.fromList
+    [ (Renderable, animation "resources/anims/blackBird.json" 800)
+    , (Timer, discreteTimer 2000)
+    , (EventListener, onEvents [spawnProjectile])
+    , (Position, position x y)
+    ]
+  )
 
 
 --------------------------------------------------------------------------------

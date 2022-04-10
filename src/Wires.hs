@@ -8,6 +8,7 @@ import Control.Wire
 import Linear.V2
 import FRP.Netwire.Move
 import qualified SFML.Window as W
+import qualified SFML.Window.Keyboard as W
 import Control.Monad.SFML.Window
 import Control.Lens hiding (at)
 import Control.Monad.Trans.State
@@ -38,37 +39,49 @@ ifPressedGo code coords = mkGen_ $ \_ -> do
      then return . Right $ coords
      else return . Left $ ()
 
---------------------------------------------------------------------------------
-moveLeft :: Int -> GameWire NominalDiffTime (V2 Int)
-moveLeft dx = ifPressedGo W.KeyA (V2 (-dx) 0)
+type PlayerControls = GameWire NominalDiffTime (V2 Int)
 
+wasdControls :: Int -> PlayerControls
+wasdControls d = moveLeft d W.KeyA <|>
+                 moveRight d W.KeyD <|>
+                 moveUp d W.KeyW  <|>
+                 moveDown d W.KeyS
 
---------------------------------------------------------------------------------
-moveRight :: Int -> GameWire NominalDiffTime (V2 Int)
-moveRight dx = ifPressedGo W.KeyD (V2 dx 0)
+arrowControls :: Int -> PlayerControls
+arrowControls d = arrowControls_X d <|>
+                  moveUp d W.KeyUp  <|>
+                  moveDown d W.KeyDown
 
-
---------------------------------------------------------------------------------
-moveUp :: Int -> GameWire NominalDiffTime (V2 Int)
-moveUp dy = ifPressedGo W.KeyW (V2 0 (-dy))
-
-
---------------------------------------------------------------------------------
-moveDown :: Int -> GameWire NominalDiffTime (V2 Int)
-moveDown dy = ifPressedGo W.KeyS (V2 0 (-dy))
-
+arrowControls_X :: Int -> PlayerControls
+arrowControls_X d = moveLeft d W.KeyLeft <|> moveRight d W.KeyRight
 
 --------------------------------------------------------------------------------
-playerKeyboard :: GameWire NominalDiffTime (V2 Int)
-playerKeyboard = moveLeft 5 <|>
-                 moveRight 5 <|>
-                 moveUp 5 <|> 
-                 moveDown 5 <|>
-                 inhibit ()
+moveLeft :: Int -> W.KeyCode -> GameWire NominalDiffTime (V2 Int)
+moveLeft dx k = ifPressedGo k (V2 (-dx) 0)
+
+
+--------------------------------------------------------------------------------
+moveRight :: Int -> W.KeyCode -> GameWire NominalDiffTime (V2 Int)
+moveRight dx k = ifPressedGo k (V2 dx 0)
+
+
+--------------------------------------------------------------------------------
+moveUp :: Int -> W.KeyCode -> GameWire NominalDiffTime (V2 Int)
+moveUp dy k = ifPressedGo k (V2 0 (-dy))
+
+
+--------------------------------------------------------------------------------
+moveDown :: Int -> W.KeyCode -> GameWire NominalDiffTime (V2 Int)
+moveDown dy k = ifPressedGo k (V2 0 (dy))
+
+
+--------------------------------------------------------------------------------
+playerKeyboard :: Int -> PlayerControls
+playerKeyboard d = arrowControls d <|> inhibit ()
 
 --------------------------------------------------------------------------------
 seagullPlayerKeyboard :: Int -> GameWire NominalDiffTime (V2 Int)
-seagullPlayerKeyboard delta = moveLeft delta <|> moveRight delta <|> inhibit ()
+seagullPlayerKeyboard delta = arrowControls_X delta <|> inhibit ()
 
 
 --------------------------------------------------------------------------------
