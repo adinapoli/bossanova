@@ -13,3 +13,5 @@ SFML-control
 *.ps
 *.hp
 *.aux
+tags
+dist-newstyle

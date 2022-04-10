@@ -14,25 +14,24 @@ executable foundations
   main-is: src/Foundations.lhs
   build-depends:
       base >= 4 && < 5,
-      netwire >= 5.0.0 && < 5.0.1
+      netwire >= 5.0.0 && < 5.0.4
 
 executable charles1
   main-is: Charles1.hs
   hs-source-dirs: src
-  
   build-depends:
       base >= 4 && < 5,
       parallel >= 3.2.0.4,
-      netwire >= 5.0.0 && < 5.0.1,
-      SFML >= 0.2.0.0 && < 0.3.0.0,
+      netwire >= 5.0.0 && < 5.0.4,
+      SFML >= 0.2.0.0 && < 2.4,
       SFML-control >= 0.2.0.2,
       text >= 0.11,
-      lens < 4.4.0.3,
-      aeson < 0.9.0.0,
+      lens,
+      aeson,
       lens-aeson,
       bytestring,
       time,
-      linear < 1.10.1.3,
+      linear,
       vector,
       data-default,
       random,
@@ -45,22 +44,22 @@ executable charles1
       async,
       parallel
 
-  ghc-options: 
+  ghc-options:
     -threaded
     -O2
     "-with-rtsopts=-N"
 
   if flag(profile)
-    ghc-options: 
+    ghc-options:
       -threaded
       -O2
       -auto-all
       -caf-all
       -rtsopts
       "-with-rtsopts=-N -p -hc"
-   
+
   if flag(eventlog)
-    ghc-options: 
+    ghc-options:
       -threaded
       -O2
       -eventlog
@@ -70,20 +69,20 @@ executable charles1
 executable seagull
   main-is: Seagull.hs
   hs-source-dirs: src
-  
+
   build-depends:
       base >= 4 && < 5,
       parallel >= 3.2.0.4,
-      netwire >= 5.0.0 && < 5.0.1,
-      SFML >= 0.2.0.0 && < 0.3.0.0,
+      netwire >= 5.0.0 && < 5.0.4,
+      SFML >= 0.2.0.0 && < 2.4,
       SFML-control >= 0.2.0.2,
       text >= 0.11,
-      lens < 4.4.0.3,
-      aeson < 0.9.0.0,
+      lens,
+      aeson,
       lens-aeson,
       bytestring,
       time,
-      linear < 1.10.1.3,
+      linear,
       vector,
       data-default,
       random,
@@ -96,22 +95,22 @@ executable seagull
       async,
       parallel
 
-  ghc-options: 
+  ghc-options:
     -threaded
     -O2
     "-with-rtsopts=-N"
 
   if flag(profile)
-    ghc-options: 
+    ghc-options:
       -threaded
       -O2
       -auto-all
       -caf-all
       -rtsopts
       "-with-rtsopts=-N -p -hc"
-   
+
   if flag(eventlog)
-    ghc-options: 
+    ghc-options:
       -threaded
       -O2
       -eventlog

@@ -1,0 +1,19 @@
+
+packages: .
+
+source-repository-package
+  type: git
+  location: git@github.com:adinapoli/Hipmunk.git
+  tag: 7dae323da4f557167e5d6e1bcc8744c2fac8bb28
+
+source-repository-package
+  type: git
+  location: git@github.com:SFML-haskell/SFML.git
+  tag: 1d1ceee6bc782f4f194853fbd0cc4acb33b86d41
+
+source-repository-package
+  type: git
+  location: git@github.com:adinapoli/SFML-control.git
+  tag: 2ee8adcdb12fd2f44f3330d3d840f554ba3fe9e8
+
+with-compiler: ghc-8.10.7

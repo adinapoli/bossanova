@@ -112,7 +112,7 @@ showMenu = do
 initState :: Managers -> SFML GameState
 initState mgrs = do
     g <- liftIO getStdGen
-    let ctxSettings = Just $ W.ContextSettings 24 8 4 3 3
+    let ctxSettings = Just $ W.ContextSettings 24 8 4 2 1 []
     wnd <- createRenderWindow
            (W.VideoMode windowWidth windowHeight 32)
            "The Lost Lens"
