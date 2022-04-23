@@ -166,31 +166,14 @@ buildEntities = do
     (#>) (enemy (V2 20 20))
     (#>) (enemy (V2 200 20))
     (#>) (enemy (V2 400 20))
-    (#>) (Entity 0 NoAlias
-               (SMap.fromList
-                 [ (Renderable, animation
-                                "resources/anims/snail.json"
-                                1000
-                   )
-                 , (Position, position 70 430)
-                 ]
-               ))
-    (#>) (Entity 0 NoAlias
-               (SMap.fromList
-                 [ (Renderable, animation
-                                "resources/anims/sun.json"
-                                60)
-                 , (Position, position 500 (-100))
-                 ]
-               ))
     (#>) (Entity 0 ThePlayer
                (SMap.fromList
                  [(Renderable, animation
-                                "resources/anims/player.json"
+                                "resources/anims/barber/biker_idle.json"
                                 300
                    )
                  , (StaticBody, staticObj (H.Circle 30))
-                 , (Position, position 0 (gameHeight - 200))
+                 , (Position, position 0 (gameHeight - 400))
                  , (Keyboard, keyboard (seagullPlayerKeyboard 5))
                  ]
                ))

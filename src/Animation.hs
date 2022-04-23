@@ -18,6 +18,7 @@ import qualified SFML.Graphics as G
 import Control.Monad.Trans.State
 import Control.Monad.Trans.Class (lift)
 import Control.Lens
+import System.FilePath
 
 import Types
 import Utils
@@ -44,7 +45,7 @@ animation pathToJson frameTime =
       let frms = buildFrames (fromJust $ allJson ^? key "frames" . _Array)
       spr <- initSpriteClbk
       tex <- initTextureClbk . fromString $
-             (T.unpack $ "resources/anims/" <> texFileName)
+             (takeDirectory pathToJson <> "/" <> T.unpack texFileName)
       lift $ setTexture spr tex True
       lift $ setTextureRect spr (frms V.! 0)
       return Animation {
@@ -62,7 +63,7 @@ animation pathToJson frameTime =
 
     buildFrame :: Value -> G.IntRect
     buildFrame v = G.IntRect top left width height
-      where 
+      where
         top    = fromInteger . fromJust $ v ^? key "x" . _Integer
         left   = fromInteger . fromJust $ v ^? key "y" . _Integer
         width  = fromInteger . fromJust $ v ^? key "w" . _Integer

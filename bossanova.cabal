@@ -46,6 +46,7 @@ library
       lens,
       aeson,
       lens-aeson,
+      filepath,
       bytestring,
       time,
       linear,

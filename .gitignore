@@ -17,3 +17,4 @@ tags
 dist-newstyle
 hie.yaml
 .vim
+**.DS_Store

@@ -1,0 +1,44 @@
+{"frames": [
+
+{
+	"filename": "Biker_idle-0.png",
+	"frame": {"x":429,"y":1,"w":202,"h":346},
+	"rotated": false,
+	"trimmed": true,
+	"spriteSourceSize": {"x":34,"y":134,"w":202,"h":346},
+	"sourceSize": {"w":240,"h":480}
+},
+{
+	"filename": "Biker_idle-1.png",
+	"frame": {"x":1,"y":1,"w":212,"h":346},
+	"rotated": false,
+	"trimmed": true,
+	"spriteSourceSize": {"x":24,"y":134,"w":212,"h":346},
+	"sourceSize": {"w":240,"h":480}
+},
+{
+	"filename": "Biker_idle-2.png",
+	"frame": {"x":215,"y":1,"w":212,"h":346},
+	"rotated": false,
+	"trimmed": true,
+	"spriteSourceSize": {"x":24,"y":134,"w":212,"h":346},
+	"sourceSize": {"w":240,"h":480}
+},
+{
+	"filename": "Biker_idle-3.png",
+	"frame": {"x":633,"y":1,"w":202,"h":346},
+	"rotated": false,
+	"trimmed": true,
+	"spriteSourceSize": {"x":34,"y":134,"w":202,"h":346},
+	"sourceSize": {"w":240,"h":480}
+}],
+"meta": {
+	"app": "https://www.codeandweb.com/texturepacker",
+	"version": "1.0",
+	"image": "biker_idle.png",
+	"format": "RGBA8888",
+	"size": {"w":836,"h":348},
+	"scale": "1",
+	"smartupdate": "$TexturePacker:SmartUpdate:cbc5f3708b0410566eda93857efd4004:cd026c130b45ab73ad35e3ca1aea60a3:4b756af403f55ebc76e0dbc5d24cf65f$"
+}
+}

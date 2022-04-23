@@ -1,0 +1,60 @@
+{"frames": [
+
+{
+	"filename": "Biker_attack1-0.png",
+	"frame": {"x":717,"y":1,"w":202,"h":346},
+	"rotated": false,
+	"trimmed": true,
+	"spriteSourceSize": {"x":34,"y":134,"w":202,"h":346},
+	"sourceSize": {"w":480,"h":480}
+},
+{
+	"filename": "Biker_attack1-1.png",
+	"frame": {"x":483,"y":1,"w":232,"h":346},
+	"rotated": false,
+	"trimmed": true,
+	"spriteSourceSize": {"x":4,"y":134,"w":232,"h":346},
+	"sourceSize": {"w":480,"h":480}
+},
+{
+	"filename": "Biker_attack1-2.png",
+	"frame": {"x":245,"y":1,"w":236,"h":346},
+	"rotated": false,
+	"trimmed": true,
+	"spriteSourceSize": {"x":0,"y":134,"w":236,"h":346},
+	"sourceSize": {"w":480,"h":480}
+},
+{
+	"filename": "Biker_attack1-3.png",
+	"frame": {"x":921,"y":1,"w":182,"h":346},
+	"rotated": false,
+	"trimmed": true,
+	"spriteSourceSize": {"x":54,"y":134,"w":182,"h":346},
+	"sourceSize": {"w":480,"h":480}
+},
+{
+	"filename": "Biker_attack1-4.png",
+	"frame": {"x":1,"y":1,"w":242,"h":346},
+	"rotated": false,
+	"trimmed": true,
+	"spriteSourceSize": {"x":54,"y":134,"w":242,"h":346},
+	"sourceSize": {"w":480,"h":480}
+},
+{
+	"filename": "Biker_attack1-5.png",
+	"frame": {"x":1105,"y":1,"w":182,"h":346},
+	"rotated": false,
+	"trimmed": true,
+	"spriteSourceSize": {"x":54,"y":134,"w":182,"h":346},
+	"sourceSize": {"w":480,"h":480}
+}],
+"meta": {
+	"app": "https://www.codeandweb.com/texturepacker",
+	"version": "1.0",
+	"image": "biker_attack.png",
+	"format": "RGBA8888",
+	"size": {"w":1288,"h":348},
+	"scale": "1",
+	"smartupdate": "$TexturePacker:SmartUpdate:a42020ca86634e68be517cf2780663b4:910ce10310876ce110009cb32399d7f7:ee52af65a2d47954b3b14d41ad039fd6$"
+}
+}
