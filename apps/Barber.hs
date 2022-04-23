@@ -170,7 +170,7 @@ buildEntities = do
                (SMap.fromList
                  [(Renderable, animation
                                 "resources/anims/barber/biker_idle.json"
-                                300
+                                2000
                    )
                  , (StaticBody, staticObj (H.Circle 30))
                  , (Position, position 0 (gameHeight - 400))

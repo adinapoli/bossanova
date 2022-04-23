@@ -97,7 +97,7 @@ data DiscreteTimer = DiscreteTimer
   { _dtInternalTime :: !Word64
   , _dtStepTime :: !Word64
   } deriving Show
-       
+
 
 --------------------------------------------------------------------------------
 type Attached = Bool

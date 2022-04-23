@@ -1,0 +1,60 @@
+{"frames": [
+
+{
+	"filename": "Biker_run-0.png",
+	"frame": {"x":345,"y":1,"w":262,"h":326},
+	"rotated": false,
+	"trimmed": true,
+	"spriteSourceSize": {"x":24,"y":154,"w":262,"h":326},
+	"sourceSize": {"w":480,"h":480}
+},
+{
+	"filename": "Biker_run-1.png",
+	"frame": {"x":609,"y":1,"w":192,"h":326},
+	"rotated": false,
+	"trimmed": true,
+	"spriteSourceSize": {"x":74,"y":154,"w":192,"h":326},
+	"sourceSize": {"w":480,"h":480}
+},
+{
+	"filename": "Biker_run-2.png",
+	"frame": {"x":997,"y":1,"w":302,"h":316},
+	"rotated": false,
+	"trimmed": true,
+	"spriteSourceSize": {"x":24,"y":164,"w":302,"h":316},
+	"sourceSize": {"w":480,"h":480}
+},
+{
+	"filename": "Biker_run-3.png",
+	"frame": {"x":1,"y":1,"w":342,"h":326},
+	"rotated": false,
+	"trimmed": true,
+	"spriteSourceSize": {"x":14,"y":154,"w":342,"h":326},
+	"sourceSize": {"w":480,"h":480}
+},
+{
+	"filename": "Biker_run-4.png",
+	"frame": {"x":803,"y":1,"w":192,"h":326},
+	"rotated": false,
+	"trimmed": true,
+	"spriteSourceSize": {"x":74,"y":154,"w":192,"h":326},
+	"sourceSize": {"w":480,"h":480}
+},
+{
+	"filename": "Biker_run-5.png",
+	"frame": {"x":1301,"y":1,"w":252,"h":316},
+	"rotated": false,
+	"trimmed": true,
+	"spriteSourceSize": {"x":24,"y":164,"w":252,"h":316},
+	"sourceSize": {"w":480,"h":480}
+}],
+"meta": {
+	"app": "https://www.codeandweb.com/texturepacker",
+	"version": "1.0",
+	"image": "biker_run.png",
+	"format": "RGBA8888",
+	"size": {"w":1554,"h":328},
+	"scale": "1",
+	"smartupdate": "$TexturePacker:SmartUpdate:b9da7a92673672d54b24e7528595f69c:a7713d4bd03c961b16049d073e8fa3c8:576090a1d8da9d90c76ea3af37af2741$"
+}
+}
