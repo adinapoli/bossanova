@@ -15,3 +15,5 @@ SFML-control
 *.aux
 tags
 dist-newstyle
+hie.yaml
+.vim
