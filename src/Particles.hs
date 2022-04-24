@@ -89,11 +89,11 @@ instance Default EmitterConfig where
 
 
 --------------------------------------------------------------------------------
-data Emitter = Emitter {
-    _emitTime  :: Session GameMonad (Timed NominalDiffTime ())
+data Emitter st = Emitter {
+    _emitTime  :: Session (GameMonad st) (Timed NominalDiffTime ())
   , _emitTimer :: NominalDiffTime --for how many seconds it must emit
   , _emitRate  :: Int --How many particle to spawn per tick.
-  , _emitWire  :: GameWire NominalDiffTime NominalDiffTime
+  , _emitWire  :: GameWire st NominalDiffTime NominalDiffTime
   }
 
 $(makeLenses ''Emitter)
@@ -138,10 +138,10 @@ update p dt =
 renderer :: G.SFRenderTarget a
              => Vector Particle
              -> a
-             -> GameMonad ()
+             -> GameMonad st ()
 renderer parts renderTarget = V.forM_ parts spriteFromParticle
   where
-    spriteFromParticle :: Particle -> GameMonad ()
+    spriteFromParticle :: Particle -> GameMonad st ()
     spriteFromParticle Particle{..} = M.unless (_partCurLife <= 0) $ do
       shp <- lift createCircleShape
       lift $ setFillColor shp (colourToSFMLColour _partColour _partAlpha)
@@ -153,6 +153,7 @@ renderer parts renderTarget = V.forM_ parts spriteFromParticle
 --------------------------------------------------------------------------------
 colourToSFMLColour :: ParticleColour -> Double -> G.Color
 colourToSFMLColour PCBlue a = G.Color 0 0 255 (double2Word8 a)
+colourToSFMLColour _ a      = G.Color 0 0 255 (double2Word8 a)
 
 
 --------------------------------------------------------------------------------
@@ -167,12 +168,12 @@ double2Word8 v = truncate (255.0 / v)
 
 --------------------------------------------------------------------------------
 enumRandom  :: (RandomGen g, Enum e) => g -> (e, g)
-enumRandom gen = 
+enumRandom gen =
     let (int, gen') = random gen in (toEnum int, gen')
 
 
 --------------------------------------------------------------------------------
-genRandParticle :: V2 Double -> ParticleConfig -> GameMonad Particle
+genRandParticle :: V2 Double -> ParticleConfig -> GameMonad st Particle
 genRandParticle startPos ParticleConfig{..} = do
   rRand    <- gets $ view randGen
   let (l, g1)  = randomR (fromEnum partCfgMinLife,

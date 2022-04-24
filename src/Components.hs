@@ -24,44 +24,44 @@ import Utils
 
 
 --------------------------------------------------------------------------------
-sprite :: Component
+sprite :: Component st
 sprite = Component Renderable (Sprite (UninitializedSprite initSpriteClbk))
 
 
 --------------------------------------------------------------------------------
-textureFrom :: FilePath -> Component
+textureFrom :: FilePath -> Component st
 textureFrom path = Component Texture
                    (SFMLTexture (UninitializedTexture (initTextureClbk path)))
 
 
 --------------------------------------------------------------------------------
-text :: Component
+text :: Component st
 text = Component Renderable (Text $ UninitializedText initTextClbk)
 
 
 --------------------------------------------------------------------------------
-textCaption :: String -> Component
+textCaption :: String -> Component st
 textCaption = Component Caption . TextCaption
 
 
 --------------------------------------------------------------------------------
-intSize :: Int -> Component
+intSize :: Int -> Component st
 intSize = Component Size . SizeInt
 
 
 --------------------------------------------------------------------------------
-colour :: G.Color -> Component
+colour :: G.Color -> Component st
 colour = Component Colour . RenderColour
 
 
 --------------------------------------------------------------------------------
-blink :: NominalDiffTime -> NominalDiffTime -> Component
+blink :: NominalDiffTime -> NominalDiffTime -> Component st
 blink cooldown blinkTime =
   Component AffectRendering (MustRenderWire (blinkWire cooldown blinkTime))
 
 
 --------------------------------------------------------------------------------
-position :: Int -> Int -> Component
+position :: Int -> Int -> Component st
 position x y = Component Position (PosInt (V2 x y))
 
 
@@ -73,37 +73,37 @@ translationFromV2 (V2 x y) = G.renderStates {
 
 
 --------------------------------------------------------------------------------
-keyboard :: GameWire NominalDiffTime (V2 Int) -> Component
+keyboard :: GameWire st NominalDiffTime (V2 Int) -> Component st
 keyboard wire = Component Keyboard (PlKbWire wire)
 
 
 --------------------------------------------------------------------------------
-onEvents :: [GameCallback] -> Component
+onEvents :: [GameCallback st] -> Component st
 onEvents = Component EventListener . Events
 
 
 --------------------------------------------------------------------------------
-linearForce :: V2 Int -> Component
+linearForce :: V2 Int -> Component st
 linearForce = Component LinearForce . ForceInt
 
 
 --------------------------------------------------------------------------------
-dynamicObj :: H.ShapeType -> Component
+dynamicObj :: H.ShapeType -> Component st
 dynamicObj typ =
   let callback = addShapeCallback addDynamicShape typ
   in Component DynamicBody
      (CollisionShape (HipmunkUninitializedShape callback))
 
 --------------------------------------------------------------------------------
-staticObj :: H.ShapeType -> Component
+staticObj :: H.ShapeType -> Component st
 staticObj typ =
   let callback = addShapeCallback addStaticShape typ
   in Component StaticBody
      (CollisionShape (HipmunkUninitializedShape callback))
 
 --------------------------------------------------------------------------------
-addShapeCallback :: (H.ShapeType -> V2 Double -> GameMonad H.Shape)
-                 -> H.ShapeType -> Entity -> GameMonad H.Shape
+addShapeCallback :: (H.ShapeType -> V2 Double -> GameMonad st H.Shape)
+                 -> H.ShapeType -> Entity st -> GameMonad st H.Shape
 addShapeCallback fn typ e =
   case _components e ^. at Position of
     Just (Component _ (PosInt pos)) -> fn typ (fmap fromIntegral pos)
@@ -111,26 +111,26 @@ addShapeCallback fn typ e =
 
 
 --------------------------------------------------------------------------------
-mouseCallback :: GameCallback -> Component
+mouseCallback :: GameCallback st -> Component st
 mouseCallback = Component Callback . CCallback
 
 
 --------------------------------------------------------------------------------
-rect :: Int -> Int -> Int -> Int -> Component
+rect :: Int -> Int -> Int -> Int -> Component st
 rect x1 y1 x2 y2 = Component BoundingBox (IntRect (G.IntRect x1 y1 x2 y2))
 
 
 --------------------------------------------------------------------------------
-discreteTimer :: Word64 -> Component
+discreteTimer :: Word64 -> Component st
 discreteTimer step = Component Timer (CTimer (DiscreteTimer 0 step))
 
 
-noop :: Component
+noop :: Component st
 noop = Component Tagless Void
 
 --------------------------------------------------------------------------------
 -- | Spawn a projectile.
-spawnProjectile :: GameCallback
+spawnProjectile :: GameCallback st
 spawnProjectile = GameCallback $ \e ->
   case liftM2 (,)
        (_components e ^. at Timer)

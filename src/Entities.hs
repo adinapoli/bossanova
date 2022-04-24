@@ -10,7 +10,7 @@ import Types
 
 --------------------------------------------------------------------------------
 -- | Add an entity. Returns the id of the created entity.
-(#>) :: Entity -> GameMonad Int
+(#>) :: Entity st -> GameMonad st Int
 (#>) e = do
   managers . entityMgr . entityCounter += 1
   eMgr <- gets . view $ managers . entityMgr
@@ -22,7 +22,7 @@ import Types
 
 --------------------------------------------------------------------------------
 -- | Delete an entity.
-(#.~) :: Entity -> GameMonad ()
+(#.~) :: Entity st -> GameMonad st ()
 (#.~) e = do
   eMgr <- gets . view $ managers . entityMgr . entities
   managers . entityMgr . entities .= Map.delete (_eId e) eMgr
@@ -30,7 +30,7 @@ import Types
 
 --------------------------------------------------------------------------------
 -- | Delete the last entity.
-popEntity :: GameMonad ()
+popEntity :: GameMonad st ()
 popEntity = do
   eMgr <- gets . view $ managers . entityMgr
   let currentId = view entityCounter eMgr
@@ -41,7 +41,7 @@ popEntity = do
 -- This should be accomplished by an "Alias manager", but it would be
 -- brittle to keep in sync it with the entityMgr.
 -- this method call is slow as it takes O(n).
-entityByAlias :: Alias -> GameMonad [Entity]
+entityByAlias :: Alias -> GameMonad st [Entity st]
 entityByAlias a = do
   eMgr <- gets . view $ managers . entityMgr . entities
   return . map snd . Map.toList . Map.filter (\v -> v ^. alias == a) $ eMgr
@@ -52,7 +52,7 @@ entityByAlias a = do
 -- for the new entity again, since everything is immutable. To avoid this, we
 -- don't update the entity directly, but we just use its ID to fetch the entity
 -- from the EntityManager.
-(#.=) :: Entity -> Component -> GameMonad ()
+(#.=) :: Entity st -> Component st -> GameMonad st ()
 ent #.= newC = do
   eMgr <- gets . view $ managers . entityMgr . entities
   case eMgr ^. at (_eId ent) of

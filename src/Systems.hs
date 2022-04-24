@@ -28,12 +28,12 @@ import Utils
 
 
 --------------------------------------------------------------------------------
-comp :: Entity -> Components
+comp :: Entity st -> Components st
 comp = _components
 
 
 --------------------------------------------------------------------------------
-updateAll :: (Entity -> GameMonad ()) -> GameMonad ()
+updateAll :: (Entity st -> GameMonad st ()) -> GameMonad st ()
 updateAll fn = do
   eMgr <- gets . view $ managers . entityMgr . entities
   let allEntities = Map.elems eMgr
@@ -51,7 +51,7 @@ updateAll fn = do
 -- b) The deallocator kicks in and delete the object (deallocatorSystem)
 -- c) HipmunkSystem tried to do something with the body. Crash!
 -- For this reason atm I'm running everything in a single thread.
-deallocatorSystem :: System
+deallocatorSystem :: System st
 deallocatorSystem = System $ updateAll $ \e ->
   case liftM2 (,)
        (comp e ^. at Position)
@@ -65,7 +65,7 @@ deallocatorSystem = System $ updateAll $ \e ->
 
 
 --------------------------------------------------------------------------------
-returnResources :: Entity -> GameMonad ()
+returnResources :: Entity st -> GameMonad st ()
 returnResources e = returnPhysicResources >> returnRenderingResources
   where
     returnPhysicResources = case comp e ^. at DynamicBody of
@@ -79,7 +79,7 @@ returnResources e = returnPhysicResources >> returnRenderingResources
         liftIO $ H.velocity body SV.$= 0
         liftIO $ atomically $ writeTQueue pool body
         managers . physicsMgr . bodyPool .= pool
-      Nothing -> return ()
+      _ -> return ()
 
     returnRenderingResources = case comp e ^. at Renderable of
       Just (Component _ (Sprite (InitializedSprite s))) -> do
@@ -87,10 +87,10 @@ returnResources e = returnPhysicResources >> returnRenderingResources
         liftIO $ atomically $ writeTQueue spool s
         managers . artMgr . spritePool .= spool
       _ -> return () -- don't dispose for now
-            
+
 
 --------------------------------------------------------------------------------
-hipmunkSystem :: System
+hipmunkSystem :: System st
 hipmunkSystem = System $ do
   pMgr <- gets . view $ managers . physicsMgr
   let wrld = pMgr ^. world
@@ -99,9 +99,9 @@ hipmunkSystem = System $ do
     updateStaticBody e
     updateDynamicBody e
   where
- 
+
     ----------------------------------------------------------------------------
-    updateStaticBody e = 
+    updateStaticBody e =
       case comp e ^. at StaticBody of
 
        Just (Component _ (CollisionShape (HipmunkUninitializedShape clbk))) -> do
@@ -113,7 +113,7 @@ hipmunkSystem = System $ do
          case comp e ^. at Position of
            Just (Component _ (PosInt pos)) -> do
              liftIO $ H.position (H.body sh) SV.$= toHipmunkVectorI pos
-           Nothing -> return ()
+           _ -> return ()
 
        _ -> return ()
 
@@ -139,7 +139,7 @@ hipmunkSystem = System $ do
 
 
 --------------------------------------------------------------------------------
-newtonianSystem :: System
+newtonianSystem :: System st
 newtonianSystem = System $ updateAll $ \e ->
   case liftM2 (,)
        (comp e ^. at LinearForce)
@@ -150,7 +150,7 @@ newtonianSystem = System $ updateAll $ \e ->
     _ -> return ()
 
 --------------------------------------------------------------------------------
-spriteInitSystem :: System
+spriteInitSystem :: System st
 spriteInitSystem = System $ updateAll $ \e ->
   case comp e ^. at Renderable of
     Just (Component _ (Sprite (UninitializedSprite clbk))) -> do
@@ -159,7 +159,7 @@ spriteInitSystem = System $ updateAll $ \e ->
     _ -> return ()
 
 --------------------------------------------------------------------------------
-textureInitSystem :: System
+textureInitSystem :: System st
 textureInitSystem = System $ updateAll $ \e ->
   case comp e ^. at Texture of
     Just (Component _ (SFMLTexture (UninitializedTexture clbk))) -> do
@@ -168,7 +168,7 @@ textureInitSystem = System $ updateAll $ \e ->
     _ -> return ()
 
 --------------------------------------------------------------------------------
-textureAttacherSystem :: System
+textureAttacherSystem :: System st
 textureAttacherSystem = System $ updateAll $ \e ->
   case liftM3 (,,)
        (comp e ^. at Texture)
@@ -183,8 +183,8 @@ textureAttacherSystem = System $ updateAll $ \e ->
     _ -> return ()
 
 --------------------------------------------------------------------------------
-textSizeSystem :: System
-textSizeSystem = System $ updateAll $ \e -> 
+textSizeSystem :: System st
+textSizeSystem = System $ updateAll $ \e ->
   case liftM2 (,)
        (comp e ^. at Renderable)
        (comp e ^. at Size) of
@@ -195,7 +195,7 @@ textSizeSystem = System $ updateAll $ \e ->
 
 
 --------------------------------------------------------------------------------
-textInitSystem :: System
+textInitSystem :: System st
 textInitSystem = System $ updateAll $ \e ->
   case comp e ^. at Renderable of
     Just (Component _ (Text (UninitializedText clbk))) -> do
@@ -205,7 +205,7 @@ textInitSystem = System $ updateAll $ \e ->
 
 
 --------------------------------------------------------------------------------
-textCaptionSystem :: System
+textCaptionSystem :: System st
 textCaptionSystem = System $ updateAll $ \e ->
   case liftM2 (,)
        (comp e ^. at Renderable)
@@ -216,18 +216,18 @@ textCaptionSystem = System $ updateAll $ \e ->
 
 
 --------------------------------------------------------------------------------
-eventSystem :: System
+eventSystem :: System st
 eventSystem = System $ updateAll $ \e ->
   case comp e ^. at EventListener of
     Just (Component _ (Events evts)) -> do
       steppedEvts <- forM evts $ \(GameCallback fn) -> fn e
       let newC = Component EventListener (Events steppedEvts)
       e #.= newC
-    Nothing -> return ()
+    _ -> return ()
 
 
 --------------------------------------------------------------------------------
-textColourSystem :: System
+textColourSystem :: System st
 textColourSystem = System $ updateAll $ \e ->
   case liftM2 (,)
        (comp e ^. at Renderable)
@@ -240,7 +240,7 @@ textColourSystem = System $ updateAll $ \e ->
 
 --------------------------------------------------------------------------------
 -- Render and display the sprite in the current position.
-rendererSystem :: System
+rendererSystem :: System st
 rendererSystem = System $ updateAll $ \e ->
   case comp e ^. at AffectRendering of
     Just (Component _ (MustRenderWire w)) -> do
@@ -254,13 +254,13 @@ rendererSystem = System $ updateAll $ \e ->
           updateSprite (comp e)
           updateText (comp e)
         Left  _ -> return ()
-    _ -> do 
+    _ -> do
       updateSprite (comp e)
       updateText (comp e)
 
 
 --------------------------------------------------------------------------------
-updateText :: Components -> GameMonad ()
+updateText :: Components st -> GameMonad st ()
 updateText co =
   case liftM2 (,) (co ^. at Renderable) (co ^. at Position) of
     Just (Component _ (Text (InitializedText t)),
@@ -272,7 +272,7 @@ updateText co =
 
 
 --------------------------------------------------------------------------------
-updateSprite :: Components -> GameMonad ()
+updateSprite :: Components st -> GameMonad st ()
 updateSprite co =
   case liftM2 (,) (co ^. at Renderable) (co ^. at Position) of
     Just (Component _ (Sprite (InitializedSprite s)),
@@ -284,7 +284,7 @@ updateSprite co =
 
 
 --------------------------------------------------------------------------------
-inputSystem :: System
+inputSystem :: System st
 inputSystem = System $ updateAll $ \e -> do
   updateMouse e
   updateKeyboard e
@@ -319,7 +319,7 @@ inputSystem = System $ updateAll $ \e -> do
 
 --------------------------------------------------------------------------------
 -- Render and display the sprite in the current position.
-animationSystem :: System
+animationSystem :: System st
 animationSystem = System $ updateAll $ \e ->
   case liftM2 (,)
        (comp e ^. at Position)

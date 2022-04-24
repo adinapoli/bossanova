@@ -22,11 +22,11 @@ import qualified Physics.Hipmunk as H
 
 
 --------------------------------------------------------------------------------
-type GameWire = Wire (Timed NominalDiffTime ()) () GameMonad
+type GameWire st i o = Wire (Timed NominalDiffTime ()) () (GameMonad st) i o
 
 
 --------------------------------------------------------------------------------
-type GameMonad = StateT GameState SFML
+type GameMonad st = StateT (GameState st) SFML
 
 
 --------------------------------------------------------------------------------
@@ -55,40 +55,40 @@ data Tag =
 
 
 --------------------------------------------------------------------------------
-data Component = Component {
+data Component st = Component {
     _compTag :: !Tag
-  , _compData :: !ComponentData
+  , _compData :: !(ComponentData st)
 }
 
 
 --------------------------------------------------------------------------------
-data ComponentData =
-    Sprite !SpriteState
-  | Text !TextState
+data ComponentData st =
+    Sprite !(SpriteState st)
+  | Text !(TextState st)
   | TextCaption !String
-  | SFMLTexture !TextureState
+  | SFMLTexture !(TextureState st)
   | SizeInt !Int
-  | CAnimation !AnimationState
+  | CAnimation !(AnimationState st)
   | IntRect !G.IntRect
   | RenderColour !G.Color
-  | Events ![GameCallback]
+  | Events ![GameCallback st]
   | PosInt !(V2 Int)
   | ForceInt !(V2 Int)
   | CTimer DiscreteTimer
-  | CCallback !GameCallback
-  | CollisionShape !ShapeState
-  | MustRenderWire (GameWire NominalDiffTime Bool)
+  | CCallback !(GameCallback st)
+  | CollisionShape !(ShapeState st)
+  | MustRenderWire (GameWire st NominalDiffTime Bool)
   | Void
-  | PlKbWire (GameWire NominalDiffTime (V2 Int))
+  | PlKbWire (GameWire st NominalDiffTime (V2 Int))
 
 --------------------------------------------------------------------------------
-data SpriteState =
-      UninitializedSprite (GameMonad G.Sprite)
+data SpriteState st =
+      UninitializedSprite (GameMonad st G.Sprite)
     | InitializedSprite !G.Sprite
 
 --------------------------------------------------------------------------------
-data TextState =
-      UninitializedText (GameMonad G.Text)
+data TextState st =
+      UninitializedText (GameMonad st G.Text)
     | InitializedText !G.Text
 
 
@@ -103,21 +103,21 @@ data DiscreteTimer = DiscreteTimer
 type Attached = Bool
 
 --------------------------------------------------------------------------------
-data TextureState =
-      UninitializedTexture (GameMonad G.Texture)
+data TextureState st =
+      UninitializedTexture (GameMonad st G.Texture)
     | InitializedTexture Attached !G.Texture
 
 --------------------------------------------------------------------------------
-data ShapeState =
-    HipmunkUninitializedShape (Entity -> GameMonad H.Shape)
+data ShapeState st =
+    HipmunkUninitializedShape (Entity st -> GameMonad st H.Shape)
   | HipmunkInitializedShape !H.Shape
 
 --------------------------------------------------------------------------------
-newtype System = System { tick :: GameMonad () }
+newtype System st = System { tick :: GameMonad st () }
 
 
 --------------------------------------------------------------------------------
-type Components = SMap.Map Tag Component
+type Components st = SMap.Map Tag (Component st)
 
 
 --------------------------------------------------------------------------------
@@ -133,43 +133,44 @@ data Alias =
 
 
 --------------------------------------------------------------------------------
-data Entity = Entity {
+data Entity st = Entity {
     _eId :: !Int
   , _alias :: !Alias
-  , _components :: !Components
+  , _components :: !(Components st)
 }
 
 
 --------------------------------------------------------------------------------
-newtype GameCallback = GameCallback {
-  runEvent :: Entity -> GameMonad GameCallback
+newtype GameCallback st = GameCallback {
+  runEvent :: Entity st -> GameMonad st (GameCallback st)
   }
 
 
 
 --------------------------------------------------------------------------------
-data EntityManager = EntityManager {
+data EntityManager st = EntityManager {
     _entityCounter :: !Int
-  , _entities      :: !(Map.IntMap Entity)
+  , _entities      :: !(Map.IntMap (Entity st))
   }
 
 
 --------------------------------------------------------------------------------
-data GameState = GameState {
+data GameState st = GameState {
     _gameWin     :: !G.RenderWindow
-  , _gameTime    :: !(Session GameMonad (Timed NominalDiffTime ()))
-  , _timeWire    :: !(GameWire (Timed NominalDiffTime ()) Double)
+  , _gameTime    :: !(Session (GameMonad st) (Timed NominalDiffTime ()))
+  , _timeWire    :: !(GameWire st (Timed NominalDiffTime ()) Double)
   , _frameTime   :: !Word64
   , _fps         :: !Int
-  , _managers    :: !Managers
+  , _managers    :: !(Managers st)
   , _randGen     :: !StdGen
-  , _systems     :: ![System]
+  , _systems     :: ![System st]
+  , _gameState   :: !st
 }
 
 
 --------------------------------------------------------------------------------
-data Managers = Managers {
-    _entityMgr   :: !EntityManager
+data Managers st = Managers {
+    _entityMgr   :: !(EntityManager st)
   , _physicsMgr  :: !PhysicsManager
   , _artMgr      :: !ArtManager
 }
@@ -219,8 +220,8 @@ data Animation = Animation {
 
 
 --------------------------------------------------------------------------------
-data AnimationState =
-      UninitializedAnimation !(GameMonad Animation)
+data AnimationState st =
+      UninitializedAnimation !(GameMonad st Animation)
     | InitializedAnimation !Animation
 
 

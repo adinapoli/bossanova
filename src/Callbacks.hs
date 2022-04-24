@@ -13,7 +13,7 @@ import Types
 
 
 --------------------------------------------------------------------------------
-initTextClbk :: GameMonad G.Text
+initTextClbk :: GameMonad st G.Text
 initTextClbk = do
   t <- lift createText
   fnt <- lift $ fontFromFile "resources/ProFont.ttf"
@@ -21,7 +21,7 @@ initTextClbk = do
   return t
 
 --------------------------------------------------------------------------------
-initSpriteClbk :: GameMonad G.Sprite
+initSpriteClbk :: GameMonad st G.Sprite
 initSpriteClbk = do
   spool <- gets . view $ managers . artMgr . spritePool
   spr <- liftIO $ atomically $ tryReadTQueue spool
@@ -32,7 +32,7 @@ initSpriteClbk = do
     Just s -> return s
 
 --------------------------------------------------------------------------------
-initTextureClbk :: FilePath -> GameMonad G.Texture
+initTextureClbk :: FilePath -> GameMonad st G.Texture
 initTextureClbk path = do
   aMgr <- gets . view $ managers . artMgr . textures
   case aMgr ^. at path of

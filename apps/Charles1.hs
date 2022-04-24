@@ -34,6 +34,7 @@ import Events
 import Settings
 import Physics
 
+data CharlesState = CharlesState
 
 --------------------------------------------------------------------------------
 -- MAIN STARTS HERE
@@ -46,7 +47,7 @@ main = runSFML $ do
       let manag = Managers {
         _entityMgr    = EntityManager 0 Map.empty
         , _physicsMgr = fMgr
-        , _artMgr     = ArtManager SMap.empty 0 sQueue 
+        , _artMgr     = ArtManager SMap.empty 0 sQueue
       }
       gameState  <- initState manag
       runAndDealloc gameState showMenu
@@ -57,7 +58,7 @@ main = runSFML $ do
 
 
 --------------------------------------------------------------------------------
-runAndDealloc :: GameState -> GameMonad a -> SFML ()
+runAndDealloc :: GameState CharlesState -> GameMonad CharlesState a -> SFML ()
 runAndDealloc st action = liftIO $ runSFML $ evalStateT action st
 
 gameWidth :: Int
@@ -67,7 +68,7 @@ gameHeight :: Int
 gameHeight = 1024
 
 --------------------------------------------------------------------------------
-showMenu :: GameMonad ()
+showMenu :: GameMonad CharlesState ()
 showMenu = do
     (#>) (Entity 0 NoAlias
          (SMap.fromList [
@@ -107,14 +108,14 @@ showMenu = do
         wantsToPlay <- lift $ pollEvent win
         case wantsToPlay of
          Just (W.SFEvtKeyPressed W.KeyReturn _ _ _ _) -> do
-            popEntity 
-            popEntity 
+            popEntity
+            popEntity
             return ()
          _ -> showMenuLoop
 
 
 --------------------------------------------------------------------------------
-initState :: Managers -> SFML GameState
+initState :: Managers CharlesState -> SFML (GameState CharlesState)
 initState mgrs = do
     g <- liftIO getStdGen
     let ctxSettings = Just $ W.ContextSettings 24 8 4 2 1 []
@@ -148,11 +149,12 @@ initState mgrs = do
         , hipmunkSystem
         , deallocatorSystem
         ]
+      , _gameState = CharlesState
     }
 
 
 ------------------------------------------------------------------------------
-buildEntities :: GameMonad ()
+buildEntities :: GameMonad CharlesState ()
 buildEntities = do
     -- screen bounds
     (#>) (Entity 0 NoAlias
@@ -223,7 +225,7 @@ buildEntities = do
                  ]))
 
     (#>) (Entity 0 ThePlayer
-               (SMap.fromList 
+               (SMap.fromList
                  [ (Renderable, sprite)
                  , (Texture, textureFrom "resources/sprites.png")
                  , (BoundingBox, rect 34 1 32 32)
@@ -249,7 +251,7 @@ buildEntities = do
 
 
 --------------------------------------------------------------------------------
-gameLoop :: GameMonad ()
+gameLoop :: GameMonad CharlesState ()
 gameLoop = do
   wnd  <- gets $ view gameWin
   sys  <- gets $ view systems
@@ -264,14 +266,14 @@ gameLoop = do
 
 
 --------------------------------------------------------------------------------
-updateWorld :: [System] -> GameMonad ()
+updateWorld :: [System CharlesState] -> GameMonad CharlesState ()
 updateWorld = do
   --sequence_ . parMap rpar tick
   mapM_ tick
 
 
 --------------------------------------------------------------------------------
-updateGameState :: G.RenderWindow -> GameMonad ()
+updateGameState :: G.RenderWindow -> GameMonad CharlesState ()
 updateGameState wnd = do
   gameState <- get
   sess <- gets $ view gameTime

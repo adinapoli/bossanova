@@ -35,6 +35,7 @@ import Settings
 import Physics
 import Animation
 
+data SeagullState = SeagullState
 
 --------------------------------------------------------------------------------
 main :: IO ()
@@ -55,7 +56,7 @@ main = runSFML $ do
 
 
 --------------------------------------------------------------------------------
-runAndDealloc :: GameState -> GameMonad a -> SFML ()
+runAndDealloc :: GameState SeagullState -> GameMonad SeagullState a -> SFML ()
 runAndDealloc st action = liftIO $ runSFML $ evalStateT action st
 
 gameWidth :: Int
@@ -65,7 +66,7 @@ gameHeight :: Int
 gameHeight = 1024
 
 --------------------------------------------------------------------------------
-showMenu :: GameMonad ()
+showMenu :: GameMonad SeagullState ()
 showMenu = do
     (#>) (Entity 0 NoAlias
          (SMap.fromList [
@@ -112,7 +113,7 @@ showMenu = do
 
 
 --------------------------------------------------------------------------------
-initState :: Managers -> SFML GameState
+initState :: Managers SeagullState -> SFML (GameState SeagullState)
 initState mgrs = do
     g <- liftIO getStdGen
     let ctxSettings = Just $ W.ContextSettings 24 8 4 2 1 []
@@ -147,11 +148,12 @@ initState mgrs = do
         , deallocatorSystem
         , animationSystem
         ]
+      , _gameState = SeagullState
     }
 
 
 ------------------------------------------------------------------------------
-buildEntities :: GameMonad ()
+buildEntities :: GameMonad SeagullState ()
 buildEntities = do
     (#>) (Entity 0 NoAlias
                (SMap.fromList
@@ -195,7 +197,7 @@ buildEntities = do
     return ()
 
 
-enemy :: V2 Int -> Entity
+enemy :: V2 Int -> Entity SeagullState
 enemy (V2 x y) = Entity 0 Enemy
   (SMap.fromList
     [ (Renderable, animation "resources/anims/blackBird.json" 800)
@@ -207,7 +209,7 @@ enemy (V2 x y) = Entity 0 Enemy
 
 
 --------------------------------------------------------------------------------
-gameLoop :: GameMonad ()
+gameLoop :: GameMonad SeagullState ()
 gameLoop = do
   wnd  <- gets $ view gameWin
   sys  <- gets $ view systems
@@ -222,14 +224,14 @@ gameLoop = do
 
 
 --------------------------------------------------------------------------------
-updateWorld :: [System] -> GameMonad ()
+updateWorld :: [System SeagullState] -> GameMonad SeagullState ()
 updateWorld = do
   --sequence_ . parMap rpar tick
   mapM_ tick
 
 
 --------------------------------------------------------------------------------
-updateGameState :: G.RenderWindow -> GameMonad ()
+updateGameState :: G.RenderWindow -> GameMonad SeagullState ()
 updateGameState wnd = do
   gameState <- get
   sess <- gets $ view gameTime

@@ -33,14 +33,14 @@ animation :: FilePath
           -- ^ Where the animation json is stored
           -> Double
           -- ^ How much display each frame
-          -> Component
+          -> Component st
 animation pathToJson frameTime =
   Component Renderable (CAnimation (UninitializedAnimation clbk))
   where
-    clbk :: GameMonad Animation
+    clbk :: GameMonad st Animation
     clbk = do
       now <- liftIO milliTime
-      allJson <- (fromJust . decode <$> liftIO (BL.readFile pathToJson)) :: GameMonad Value
+      allJson <- (fromJust . decode <$> liftIO (BL.readFile pathToJson)) :: GameMonad st Value
       let (Just texFileName) = allJson ^? key "meta" . key "image" . _String
       let frms = buildFrames (fromJust $ allJson ^? key "frames" . _Array)
       spr <- initSpriteClbk
@@ -81,7 +81,7 @@ stopAnimation anim = (animationPlaying .~ False) .
                      (animationCurrentIdx .~ 0) $ anim
 
 --------------------------------------------------------------------------------
-stepAnimation :: Animation -> GameMonad Animation
+stepAnimation :: Animation -> GameMonad st Animation
 stepAnimation anim@Animation{..} = do
   now <- liftIO milliTime
   if anim ^. animationPlaying && now - _animationInternalTime >=

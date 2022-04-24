@@ -18,9 +18,9 @@ import Entities
 
 --------------------------------------------------------------------------------
 updateCaption :: Show a
-              => GameWire NominalDiffTime a
-              -> Entity
-              -> GameMonad GameCallback
+              => GameWire st NominalDiffTime a
+              -> Entity st
+              -> GameMonad st (GameCallback st)
 updateCaption wire e = do
   wire' <- stepTimed wire $ \_ -> do
     pl  <- entityByAlias ThePlayer
@@ -31,29 +31,30 @@ updateCaption wire e = do
            , Component _ (TextCaption _)) -> do
         let newC = Component Caption (TextCaption (show pos))
         e #.= newC
-      Nothing -> return ()
+      _ -> return ()
   return $ GameCallback (updateCaption wire')
 
 
 --------------------------------------------------------------------------------
 updateColour :: G.Color
-             -> GameWire NominalDiffTime a
-             -> Entity
-             -> GameMonad GameCallback
+             -> GameWire st NominalDiffTime a
+             -> Entity st
+             -> GameMonad st (GameCallback st)
 updateColour targetCol wire e = do
   wire' <- stepTimed wire $ \_ ->
     case comp e ^. at Colour of
       Just (Component _ (RenderColour _)) ->
            e #.= Component Colour (RenderColour targetCol)
+      _ -> pure ()
   return $ GameCallback (updateColour targetCol wire')
 
 
 --------------------------------------------------------------------------------
 toggleColour :: G.Color
              -> G.Color
-             -> GameWire NominalDiffTime a
-             -> Entity
-             -> GameMonad GameCallback
+             -> GameWire st NominalDiffTime a
+             -> Entity st
+             -> GameMonad st (GameCallback st)
 toggleColour startCol endCol wire e = do
   sess <- gets $ view gameTime
   (dt, _) <- stepSession sess
@@ -77,7 +78,7 @@ toggleColour startCol endCol wire e = do
 
 
 ------------------------------------------------------------------------------
-displayPhysicsBodyCount :: Entity -> GameMonad GameCallback
+displayPhysicsBodyCount :: Entity st -> GameMonad st (GameCallback st)
 displayPhysicsBodyCount e = do
   pMgr <- gets . view $ managers . physicsMgr
   bc  <- entityByAlias BodyCounter
@@ -87,10 +88,10 @@ displayPhysicsBodyCount e = do
       let newC = Component Caption (TextCaption newT)
       e #.= newC
       return $ GameCallback displayPhysicsBodyCount
-    Nothing -> return $ GameCallback displayPhysicsBodyCount
+    _ -> return $ GameCallback displayPhysicsBodyCount
 
 ------------------------------------------------------------------------------
-displaySpritesCount :: Entity -> GameMonad GameCallback
+displaySpritesCount :: Entity st -> GameMonad st (GameCallback st)
 displaySpritesCount e = do
   artMgr <- gets . view $ managers . artMgr
   bc  <- entityByAlias SpriteCounter
@@ -100,11 +101,11 @@ displaySpritesCount e = do
       let newC = Component Caption (TextCaption newT)
       e #.= newC
       return $ GameCallback displaySpritesCount
-    Nothing -> return $ GameCallback displaySpritesCount
+    _ -> return $ GameCallback displaySpritesCount
 
 
 --------------------------------------------------------------------------------
-updateAndDisplayFPS :: Entity -> GameMonad GameCallback
+updateAndDisplayFPS :: Entity st -> GameMonad st (GameCallback st)
 updateAndDisplayFPS e = do
   fTime <- gets $ view frameTime
   fps' <- gets $ view fps
@@ -121,7 +122,7 @@ updateAndDisplayFPS e = do
           let newC = Component Caption (TextCaption newT)
           e #.= newC
           return $ GameCallback updateAndDisplayFPS
-        Nothing -> return $ GameCallback updateAndDisplayFPS
+        _ -> return $ GameCallback updateAndDisplayFPS
     else do
       fps += 1
       return $ GameCallback updateAndDisplayFPS

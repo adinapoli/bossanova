@@ -54,7 +54,7 @@ createPhysicsManager = do
 
 
 --------------------------------------------------------------------------------
-destroyPhysicManager :: GameMonad ()
+destroyPhysicManager :: GameMonad st ()
 destroyPhysicManager = do
   mgr <- gets . view $ managers . physicsMgr
   liftIO $ freeSpace (mgr ^. world)
@@ -76,7 +76,7 @@ fromHipmunkVector (Vector x y) = V2 x y
 
 --------------------------------------------------------------------------------
 -- Add a new dynamic body to the Physic Manager
-addDynamicShape :: ShapeType -> V2 Double -> GameMonad Shape
+addDynamicShape :: ShapeType -> V2 Double -> GameMonad st Shape
 addDynamicShape shpTyp pos = do
   pMgr <- gets . view $ managers . physicsMgr
   let cfg  = pMgr ^. physicsCfg
@@ -88,12 +88,12 @@ addDynamicShape shpTyp pos = do
 
 --------------------------------------------------------------------------------
 -- Add a new static body to the Physic Manager
-addStaticShape :: ShapeType -> V2 Double -> GameMonad Shape
+addStaticShape :: ShapeType -> V2 Double -> GameMonad st Shape
 addStaticShape = addShape' infinity infinity True
 
 
 --------------------------------------------------------------------------------
-bodyFromPool :: Mass -> Moment -> GameMonad Body
+bodyFromPool :: Mass -> Moment -> GameMonad st Body
 bodyFromPool mss mom = do
   pMgr <- gets $ view $ managers . physicsMgr
   pool <- gets $ view $ managers . physicsMgr . bodyPool
@@ -117,7 +117,7 @@ addShape' :: Double
           -> Bool
           -> ShapeType
           -> V2 Double
-          -> GameMonad Shape
+          -> GameMonad st Shape
 addShape' mss momt isStatic shpTyp pos = do
   pMgr <- gets $ view $ managers . physicsMgr
   let defaultFriction   = pMgr ^. physicsCfg . defFriction

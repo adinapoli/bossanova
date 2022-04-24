@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DoAndIfThenElse #-}
 {-# LANGUAGE RankNTypes #-}
@@ -49,7 +50,6 @@ main = runSFML $ do
         , _artMgr     = ArtManager SMap.empty 0 sQueue
       }
       gameState  <- initState manag
-      --runAndDealloc gameState showMenu
       flip evalStateT gameState $ do
         buildEntities
         gameLoop
@@ -57,7 +57,7 @@ main = runSFML $ do
 
 
 --------------------------------------------------------------------------------
-runAndDealloc :: GameState -> GameMonad a -> SFML ()
+runAndDealloc :: GameState BarberGameState -> GameMonad BarberGameState a -> SFML ()
 runAndDealloc st action = liftIO $ runSFML $ evalStateT action st
 
 gameWidth :: Int
@@ -66,55 +66,18 @@ gameWidth = 2048
 gameHeight :: Int
 gameHeight = 1024
 
---------------------------------------------------------------------------------
-showMenu :: GameMonad ()
-showMenu = do
-    (#>) (Entity 0 NoAlias
-         (SMap.fromList [
-                     (Renderable, sprite)
-                   , (Texture, textureFrom "resources/menu.png")
-                   , (BoundingBox, rect 0 0 gameWidth gameHeight)
-                   , (Position, position 0 0)
-                   ]))
-    (#>) (Entity 0 NoAlias
-         (SMap.fromList [
-                     (Renderable, text)
-                   , (Size, intSize 20)
-                   , (Caption, textCaption "Press Enter to play!")
-                   , (Colour, colour white)
-                   , (EventListener, onEvents [
-                      GameCallback (toggleColour white gray (blinkWire 1 2))
-                   ])
-                   , (Position, position 200 430)
-                   ]))
-    showMenuLoop
+data PlayerState =
+    PS_Idle
+  | PS_Running
+  | PS_Attack1
+  deriving (Show, Eq)
 
-  where
-    showMenuLoop = do
-        win <- gets $ view gameWin
-        sess <- gets $ view gameTime
-        sys <- gets $ view systems
-        lift $ clearRenderWindow win white
-
-        -- Update the world
-        forM_ sys tick
-
-        -- Update the game state
-        (_, sess') <- stepSession sess
-        gameTime .= sess'
-        lift $ display win
-
-        wantsToPlay <- lift $ pollEvent win
-        case wantsToPlay of
-         Just (W.SFEvtKeyPressed W.KeyReturn _ _ _ _) -> do
-            popEntity
-            popEntity
-            return ()
-         _ -> showMenuLoop
-
+data BarberGameState = BarberGameState
+  { _gsPlayerState :: PlayerState
+  } deriving (Show, Eq)
 
 --------------------------------------------------------------------------------
-initState :: Managers -> SFML GameState
+initState :: Managers BarberGameState -> SFML (GameState BarberGameState)
 initState mgrs = do
     g <- liftIO getStdGen
     let ctxSettings = Just $ W.ContextSettings 24 8 4 2 1 []
@@ -149,11 +112,12 @@ initState mgrs = do
         , deallocatorSystem
         , animationSystem
         ]
+      , _gameState = BarberGameState PS_Idle
     }
 
 
 ------------------------------------------------------------------------------
-buildEntities :: GameMonad ()
+buildEntities :: GameMonad BarberGameState ()
 buildEntities = do
     (#>) (Entity 0 NoAlias
                (SMap.fromList
@@ -174,13 +138,13 @@ buildEntities = do
                    )
                  , (StaticBody, staticObj (H.Circle 30))
                  , (Position, position 0 (gameHeight - 400))
-                 , (Keyboard, keyboard (seagullPlayerKeyboard 5))
+                 , (Keyboard, keyboard (barberCombatPlayerKeyboard 5))
                  ]
                ))
     return ()
 
 
-enemy :: V2 Int -> Entity
+enemy :: V2 Int -> Entity BarberGameState
 enemy (V2 x y) = Entity 0 Enemy
   (SMap.fromList
     [ (Renderable, animation "resources/anims/blackBird.json" 800)
@@ -190,9 +154,8 @@ enemy (V2 x y) = Entity 0 Enemy
     ]
   )
 
-
 --------------------------------------------------------------------------------
-gameLoop :: GameMonad ()
+gameLoop :: GameMonad BarberGameState ()
 gameLoop = do
   wnd  <- gets $ view gameWin
   sys  <- gets $ view systems
@@ -207,14 +170,14 @@ gameLoop = do
 
 
 --------------------------------------------------------------------------------
-updateWorld :: [System] -> GameMonad ()
+updateWorld :: [System BarberGameState] -> GameMonad BarberGameState ()
 updateWorld = do
   --sequence_ . parMap rpar tick
   mapM_ tick
 
 
 --------------------------------------------------------------------------------
-updateGameState :: G.RenderWindow -> GameMonad ()
+updateGameState :: G.RenderWindow -> GameMonad BarberGameState ()
 updateGameState wnd = do
   gameState <- get
   sess <- gets $ view gameTime
@@ -225,3 +188,5 @@ updateGameState wnd = do
   timeWire .= wire'
   randGen .= gameState ^. randGen . to (snd . next)
   lift $ display wnd
+
+makeLenses ''BarberGameState

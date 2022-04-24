@@ -14,83 +14,96 @@ import Control.Lens hiding (at)
 import Control.Monad.Trans.State
 import Control.Monad.Trans.Class (lift)
 import Types
+import Data.Foldable (asum)
 
 
 
 --------------------------------------------------------------------------------
-challenge1 :: GameWire NominalDiffTime NominalDiffTime
+challenge1 :: GameWire st NominalDiffTime NominalDiffTime
 challenge1 = for 10 . integral 0 . pure 20    -->
              for 10 . integral 0 . pure (-20) -->
              challenge1
 
 
 --------------------------------------------------------------------------------
-blinkWire :: NominalDiffTime -> NominalDiffTime -> GameWire NominalDiffTime Bool
+blinkWire :: NominalDiffTime -> NominalDiffTime -> GameWire st NominalDiffTime Bool
 blinkWire cooldown blinkTime = after cooldown .
                                (for blinkTime . pure True -->
                                 blinkWire cooldown blinkTime)
 
 
 --------------------------------------------------------------------------------
-ifPressedGo :: W.KeyCode -> V2 Int -> GameWire NominalDiffTime (V2 Int)
-ifPressedGo code coords = mkGen_ $ \_ -> do
+ifPressedGo :: W.KeyCode -> V2 Int -> GameWire st NominalDiffTime (V2 Int)
+ifPressedGo code coords = ifPressed code (pure coords)
+
+ifPressed :: W.KeyCode -> GameMonad st a -> GameWire st NominalDiffTime a
+ifPressed code m = mkGen_ $ \_ -> do
   keyPressed <- lift $ isKeyPressed code
+  a <- m
   if keyPressed
-     then return . Right $ coords
+     then return . Right $ a
      else return . Left $ ()
 
-type PlayerControls = GameWire NominalDiffTime (V2 Int)
+type PlayerControls st = GameWire st NominalDiffTime (V2 Int)
 
-wasdControls :: Int -> PlayerControls
+wasdControls :: Int -> PlayerControls st
 wasdControls d = moveLeft d W.KeyA <|>
                  moveRight d W.KeyD <|>
                  moveUp d W.KeyW  <|>
                  moveDown d W.KeyS
 
-arrowControls :: Int -> PlayerControls
+arrowControls :: Int -> PlayerControls st
 arrowControls d = arrowControls_X d <|>
                   moveUp d W.KeyUp  <|>
                   moveDown d W.KeyDown
 
-arrowControls_X :: Int -> PlayerControls
+arrowControls_X :: Int -> PlayerControls st
 arrowControls_X d = moveLeft d W.KeyLeft <|> moveRight d W.KeyRight
 
 --------------------------------------------------------------------------------
-moveLeft :: Int -> W.KeyCode -> GameWire NominalDiffTime (V2 Int)
+moveLeft :: Int -> W.KeyCode -> GameWire st NominalDiffTime (V2 Int)
 moveLeft dx k = ifPressedGo k (V2 (-dx) 0)
 
 
 --------------------------------------------------------------------------------
-moveRight :: Int -> W.KeyCode -> GameWire NominalDiffTime (V2 Int)
+moveRight :: Int -> W.KeyCode -> GameWire st NominalDiffTime (V2 Int)
 moveRight dx k = ifPressedGo k (V2 dx 0)
 
 
 --------------------------------------------------------------------------------
-moveUp :: Int -> W.KeyCode -> GameWire NominalDiffTime (V2 Int)
+moveUp :: Int -> W.KeyCode -> GameWire st NominalDiffTime (V2 Int)
 moveUp dy k = ifPressedGo k (V2 0 (-dy))
 
 
 --------------------------------------------------------------------------------
-moveDown :: Int -> W.KeyCode -> GameWire NominalDiffTime (V2 Int)
+moveDown :: Int -> W.KeyCode -> GameWire st NominalDiffTime (V2 Int)
 moveDown dy k = ifPressedGo k (V2 0 (dy))
 
 
 --------------------------------------------------------------------------------
-playerKeyboard :: Int -> PlayerControls
+playerKeyboard :: Int -> PlayerControls st
 playerKeyboard d = arrowControls d <|> inhibit ()
 
 --------------------------------------------------------------------------------
-seagullPlayerKeyboard :: Int -> GameWire NominalDiffTime (V2 Int)
+seagullPlayerKeyboard :: Int -> GameWire st NominalDiffTime (V2 Int)
 seagullPlayerKeyboard delta = arrowControls_X delta <|> inhibit ()
 
+barberCombatPlayerKeyboard :: Int -> GameWire st NominalDiffTime (V2 Int)
+barberCombatPlayerKeyboard delta =
+  asum [
+    ifPressed W.KeyRight $ do
+      pure (V2 delta 0)
+  , ifPressed W.KeyLeft $ do
+      pure (V2 (-delta) 0)
+  ]
 
 --------------------------------------------------------------------------------
-always :: GameWire a Bool
+always :: GameWire st a Bool
 always = pure True
 
 
 --------------------------------------------------------------------------------
-glowingText :: GameWire NominalDiffTime Int
+glowingText :: GameWire st NominalDiffTime Int
 glowingText = for 0.5 . pure 20 -->
               for 0.5 . pure 22 -->
               for 0.5 . pure 24 -->
@@ -98,9 +111,9 @@ glowingText = for 0.5 . pure 20 -->
 
 
 --------------------------------------------------------------------------------
-stepTimed :: GameWire NominalDiffTime b
-          -> (b -> GameMonad c)
-          -> GameMonad (GameWire NominalDiffTime b)
+stepTimed :: GameWire st NominalDiffTime b
+          -> (b -> GameMonad st c)
+          -> GameMonad st (GameWire st NominalDiffTime b)
 stepTimed wire fn = do
   sess <- gets $ view gameTime
   (dt, _) <- stepSession sess
@@ -109,10 +122,10 @@ stepTimed wire fn = do
 
 
 --------------------------------------------------------------------------------
-stepTimed' :: GameWire NominalDiffTime b
-          -> (b -> GameMonad c)
-          -> (() -> GameMonad d)
-          -> GameMonad (GameWire NominalDiffTime b)
+stepTimed' :: GameWire st NominalDiffTime b
+          -> (b -> GameMonad st c)
+          -> (() -> GameMonad st d)
+          -> GameMonad st (GameWire st NominalDiffTime b)
 stepTimed' wire ok ko = do
   sess <- gets $ view gameTime
   (dt, _) <- stepSession sess
@@ -123,7 +136,7 @@ stepTimed' wire ok ko = do
 
 
 stepEvery :: NominalDiffTime
-          -> GameWire NominalDiffTime NominalDiffTime
+          -> GameWire st NominalDiffTime NominalDiffTime
 stepEvery interval = for interval . pure 0 -->
                      onlyOnce --> stepEvery interval
 
@@ -131,6 +144,6 @@ stepEvery interval = for interval . pure 0 -->
 -- What we really want is something which triggers ONCE.
 -- (for (interval + 0.01) --> stepEvery interval) . after interval
 
-onlyOnce :: GameWire NominalDiffTime NominalDiffTime
+onlyOnce :: GameWire st NominalDiffTime NominalDiffTime
 onlyOnce = mkGen_ $ \a ->
   return $ if mod (fromEnum a) 2 == 0 then Right a else Left ()

@@ -19,7 +19,7 @@ import qualified Physics.Hipmunk as H
 
 
 --------------------------------------------------------------------------------
-spawnRigidBody :: GameCallback
+spawnRigidBody :: GameCallback st
 spawnRigidBody = GameCallback $ \_ -> do
   leftPressed <- liftIO $ W.isMouseButtonPressed W.MouseLeft
   rightPressed <- liftIO $ W.isMouseButtonPressed W.MouseRight
@@ -27,7 +27,7 @@ spawnRigidBody = GameCallback $ \_ -> do
     win <- gets $ view gameWin
     (S.Vec2i x y) <- liftIO $ W.getMousePosition (Just win)
     void $ (#>) (Entity 0 NoAlias
-               (SMap.fromList 
+               (SMap.fromList
                  [ (Renderable, sprite)
                  , (Texture, textureFrom "resources/sprites.png")
                  , (BoundingBox, rect 1 1 32 32)
@@ -39,7 +39,7 @@ spawnRigidBody = GameCallback $ \_ -> do
     win <- gets $ view gameWin
     (S.Vec2i x y) <- liftIO $ W.getMousePosition (Just win)
     void $ (#>) (Entity 0 NoAlias
-               (SMap.fromList 
+               (SMap.fromList
                  [ (Renderable, sprite)
                  , (Texture, textureFrom "resources/sprites.png")
                  , (BoundingBox, rect 1 1 32 32)
