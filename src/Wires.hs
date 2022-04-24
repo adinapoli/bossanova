@@ -33,18 +33,17 @@ blinkWire cooldown blinkTime = after cooldown .
 
 
 --------------------------------------------------------------------------------
-ifPressedGo :: W.KeyCode -> V2 Int -> GameWire st NominalDiffTime (V2 Int)
-ifPressedGo code coords = ifPressed code (pure coords)
+ifPressedGo :: W.KeyCode -> V2 Int -> GameWire st NominalDiffTime (st -> st, V2 Int)
+ifPressedGo code coords = ifPressed code (id, coords)
 
-ifPressed :: W.KeyCode -> GameMonad st a -> GameWire st NominalDiffTime a
-ifPressed code m = mkGen_ $ \_ -> do
+ifPressed :: W.KeyCode -> (st -> st, a) -> GameWire st NominalDiffTime (st -> st, a)
+ifPressed code f = mkGen_ $ \_ -> do
   keyPressed <- lift $ isKeyPressed code
-  a <- m
   if keyPressed
-     then return . Right $ a
+     then return . Right $ f
      else return . Left $ ()
 
-type PlayerControls st = GameWire st NominalDiffTime (V2 Int)
+type PlayerControls st = GameWire st NominalDiffTime (st -> st, V2 Int)
 
 wasdControls :: Int -> PlayerControls st
 wasdControls d = moveLeft d W.KeyA <|>
@@ -61,22 +60,22 @@ arrowControls_X :: Int -> PlayerControls st
 arrowControls_X d = moveLeft d W.KeyLeft <|> moveRight d W.KeyRight
 
 --------------------------------------------------------------------------------
-moveLeft :: Int -> W.KeyCode -> GameWire st NominalDiffTime (V2 Int)
+moveLeft :: Int -> W.KeyCode -> GameWire st NominalDiffTime (st -> st, V2 Int)
 moveLeft dx k = ifPressedGo k (V2 (-dx) 0)
 
 
 --------------------------------------------------------------------------------
-moveRight :: Int -> W.KeyCode -> GameWire st NominalDiffTime (V2 Int)
+moveRight :: Int -> W.KeyCode -> GameWire st NominalDiffTime (st -> st, V2 Int)
 moveRight dx k = ifPressedGo k (V2 dx 0)
 
 
 --------------------------------------------------------------------------------
-moveUp :: Int -> W.KeyCode -> GameWire st NominalDiffTime (V2 Int)
+moveUp :: Int -> W.KeyCode -> GameWire st NominalDiffTime (st -> st, V2 Int)
 moveUp dy k = ifPressedGo k (V2 0 (-dy))
 
 
 --------------------------------------------------------------------------------
-moveDown :: Int -> W.KeyCode -> GameWire st NominalDiffTime (V2 Int)
+moveDown :: Int -> W.KeyCode -> GameWire st NominalDiffTime (st -> st, V2 Int)
 moveDown dy k = ifPressedGo k (V2 0 (dy))
 
 
@@ -85,17 +84,8 @@ playerKeyboard :: Int -> PlayerControls st
 playerKeyboard d = arrowControls d <|> inhibit ()
 
 --------------------------------------------------------------------------------
-seagullPlayerKeyboard :: Int -> GameWire st NominalDiffTime (V2 Int)
+seagullPlayerKeyboard :: Int -> GameWire st NominalDiffTime (st -> st, V2 Int)
 seagullPlayerKeyboard delta = arrowControls_X delta <|> inhibit ()
-
-barberCombatPlayerKeyboard :: Int -> GameWire st NominalDiffTime (V2 Int)
-barberCombatPlayerKeyboard delta =
-  asum [
-    ifPressed W.KeyRight $ do
-      pure (V2 delta 0)
-  , ifPressed W.KeyLeft $ do
-      pure (V2 (-delta) 0)
-  ]
 
 --------------------------------------------------------------------------------
 always :: GameWire st a Bool

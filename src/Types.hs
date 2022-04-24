@@ -79,7 +79,7 @@ data ComponentData st =
   | CollisionShape !(ShapeState st)
   | MustRenderWire (GameWire st NominalDiffTime Bool)
   | Void
-  | PlKbWire (GameWire st NominalDiffTime (V2 Int))
+  | PlKbWire (GameWire st NominalDiffTime (st -> st, V2 Int))
 
 --------------------------------------------------------------------------------
 data SpriteState st =

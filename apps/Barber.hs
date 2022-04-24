@@ -15,6 +15,7 @@ import Control.Lens hiding (at)
 import Control.Concurrent.STM
 import qualified SFML.Window as W
 import qualified SFML.Graphics as G
+import Control.Lens
 import Control.Monad.SFML
 import Control.Monad.SFML.Graphics
 import SFML.Graphics.Color
@@ -37,7 +38,21 @@ import Events
 import Settings
 import Physics
 import Animation
+import Data.Foldable
+import Debug.Trace
 
+
+data PlayerState =
+    PS_Idle
+  | PS_Running
+  | PS_Attack1
+  deriving (Show, Eq)
+
+data BarberGameState = BarberGameState
+  { _gsPlayerState :: PlayerState
+  } deriving (Show, Eq)
+
+makeLenses ''BarberGameState
 
 --------------------------------------------------------------------------------
 main :: IO ()
@@ -65,16 +80,6 @@ gameWidth = 2048
 
 gameHeight :: Int
 gameHeight = 1024
-
-data PlayerState =
-    PS_Idle
-  | PS_Running
-  | PS_Attack1
-  deriving (Show, Eq)
-
-data BarberGameState = BarberGameState
-  { _gsPlayerState :: PlayerState
-  } deriving (Show, Eq)
 
 --------------------------------------------------------------------------------
 initState :: Managers BarberGameState -> SFML (GameState BarberGameState)
@@ -154,6 +159,17 @@ enemy (V2 x y) = Entity 0 Enemy
     ]
   )
 
+barberCombatPlayerKeyboard :: Int
+                           -> GameWire BarberGameState NominalDiffTime (BarberGameState -> BarberGameState, V2 Int)
+barberCombatPlayerKeyboard delta = do
+  asum [
+      ifPressed W.KeyRight (over gsPlayerState (const PS_Running), V2 delta 0)
+    , ifPressed W.KeyLeft (over gsPlayerState (const PS_Running), V2 (-delta) 0)
+    , ifPressed W.KeySpace (over gsPlayerState (const PS_Attack1), V2 0 0)
+    , mkGen_ $ \_ -> pure $ Right (over gsPlayerState (const PS_Idle), V2 0 0)
+    , inhibit ()
+    ]
+
 --------------------------------------------------------------------------------
 gameLoop :: GameMonad BarberGameState ()
 gameLoop = do
@@ -179,14 +195,12 @@ updateWorld = do
 --------------------------------------------------------------------------------
 updateGameState :: G.RenderWindow -> GameMonad BarberGameState ()
 updateGameState wnd = do
-  gameState <- get
+  gs <- get
   sess <- gets $ view gameTime
   tm   <- gets $ view timeWire
   (dt, sess') <- stepSession sess
   (_, wire') <- stepWire tm dt (Right dt)
   gameTime .= sess'
   timeWire .= wire'
-  randGen .= gameState ^. randGen . to (snd . next)
+  randGen .= gs ^. randGen . to (snd . next)
   lift $ display wnd
-
-makeLenses ''BarberGameState

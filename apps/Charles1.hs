@@ -231,6 +231,7 @@ buildEntities = do
                  , (BoundingBox, rect 34 1 32 32)
                  , (Position, position 20 300)
                  , (Keyboard, keyboard (playerKeyboard 5))
+                 --, (StaticBody, staticObj (H.Circle 32))
                  ]
                ))
 

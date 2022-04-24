@@ -18,7 +18,7 @@ import Entities
 
 --------------------------------------------------------------------------------
 updateCaption :: Show a
-              => GameWire st NominalDiffTime a
+              => GameWire st NominalDiffTime (st -> st, a)
               -> Entity st
               -> GameMonad st (GameCallback st)
 updateCaption wire e = do

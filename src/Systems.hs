@@ -306,8 +306,9 @@ inputSystem = System $ updateAll $ \e -> do
          (dt, _) <- stepSession sess
          (res, wire') <- stepWire w dt (Right (dtime dt))
          case res of
-           Right ds -> do
+           Right (updateGameState, ds) -> do
              updateKbWire wire' k e
+             gameState %= updateGameState
              let newC = compData .~ PosInt (oldPos + ds) $ c
              e #.= newC
            Left  _  -> updateKbWire wire' k e

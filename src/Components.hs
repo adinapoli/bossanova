@@ -73,7 +73,7 @@ translationFromV2 (V2 x y) = G.renderStates {
 
 
 --------------------------------------------------------------------------------
-keyboard :: GameWire st NominalDiffTime (V2 Int) -> Component st
+keyboard :: GameWire st NominalDiffTime (st -> st, V2 Int) -> Component st
 keyboard wire = Component Keyboard (PlKbWire wire)
 
 
