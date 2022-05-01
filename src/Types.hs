@@ -12,7 +12,7 @@ import Data.Word
 import Data.IORef
 import Linear.V2
 import System.Random
-import Control.Wire
+import Control.Wire hiding (Last)
 import Control.Lens hiding (at)
 import Control.Monad.Trans.State
 import Control.Monad.SFML
@@ -23,12 +23,17 @@ import qualified Data.Map.Strict as SMap
 
 import qualified Physics.Hipmunk as H
 import qualified SFML.Window as SFML
+import Data.Monoid (Last)
 
 
-type StateDelta s = Timed NominalDiffTime s
+newtype StateDelta s = StateDelta { getStateDelta :: Timed NominalDiffTime (Last s) }
+  deriving (Show, Eq, Semigroup, Monoid)
+
+instance HasTime NominalDiffTime (StateDelta s) where
+  dtime (StateDelta tmd) = dtime tmd
 
 --------------------------------------------------------------------------------
-type GameWire st i o = Wire (StateDelta ()) () (GameMonad st) i o
+type GameWire st i o = Wire (StateDelta st) () (GameMonad st) i o
 
 
 --------------------------------------------------------------------------------
@@ -85,7 +90,7 @@ data ComponentData st =
   | CollisionShape !(ShapeState st)
   | MustRenderWire (GameWire st NominalDiffTime Bool)
   | Void
-  | PlKbWire (Wire (StateDelta ()) () SFML [SFML.KeyCode] (st -> st, V2 Int))
+  | PlKbWire (Wire (StateDelta st) () SFML [SFML.KeyCode] (st -> st, V2 Int))
 
 --------------------------------------------------------------------------------
 data SpriteState st =
@@ -163,7 +168,7 @@ data EntityManager st = EntityManager {
 --------------------------------------------------------------------------------
 data GameState st = GameState {
     _gameWin     :: !G.RenderWindow
-  , _gameTime    :: !(Session (GameMonad st) (Timed NominalDiffTime ()))
+  , _gameSession :: !(Session (GameMonad st) (StateDelta st))
   , _timeWire    :: !(GameWire st (Timed NominalDiffTime ()) Double)
   , _frameTime   :: !Word64
   , _fps         :: !Int

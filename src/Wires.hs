@@ -4,7 +4,7 @@ module Wires where
 
 import Prelude hiding ((.), id, until)
 import Control.Applicative
-import Control.Wire
+import Control.Wire hiding (Last)
 import Linear.V2
 import FRP.Netwire.Move
 import qualified SFML.Window as W
@@ -44,7 +44,7 @@ ifPressed :: W.KeyCode -> (st -> st, a) -> PlayerControls st a
 ifPressed code (f, a) = mkPure_ $ \pressedThisFrame ->
   if L.elem code pressedThisFrame then Right (f, a) else Left ()
 
-type PlayerControls st a = Wire (StateDelta ()) () SFML [SFML.KeyCode] (st -> st, a)
+type PlayerControls st a = Wire (StateDelta st) () SFML [SFML.KeyCode] (st -> st, a)
 
 wasdControls :: Int -> PlayerControls st (V2 Int)
 wasdControls d = moveLeft d W.KeyA <|>
@@ -112,7 +112,7 @@ stepTimed :: Monoid a => GameWire st a b
           -> (b -> GameMonad st c)
           -> GameMonad st (GameWire st a b)
 stepTimed wire fn = do
-  sess <- gets $ view gameTime
+  sess <- gets $ view gameSession
   (dt, _) <- stepSession sess
   (res, wire') <- stepWire wire dt (Right mempty)
   either (const $ return wire') (\v -> fn v >> return wire') res
@@ -124,7 +124,7 @@ stepTimed' :: GameWire st NominalDiffTime b
           -> (() -> GameMonad st d)
           -> GameMonad st (GameWire st NominalDiffTime b)
 stepTimed' wire ok ko = do
-  sess <- gets $ view gameTime
+  sess <- gets $ view gameSession
   (dt, _) <- stepSession sess
   (res, wire') <- stepWire wire dt (Right (dtime dt))
   case res of

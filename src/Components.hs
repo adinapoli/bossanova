@@ -74,7 +74,7 @@ translationFromV2 (V2 x y) = G.renderStates {
 
 
 --------------------------------------------------------------------------------
-keyboard :: Wire (StateDelta ()) () SFML [SFML.KeyCode] (st -> st, V2 Int) -> Component st
+keyboard :: Wire (StateDelta st) () SFML [SFML.KeyCode] (st -> st, V2 Int) -> Component st
 keyboard wire = Component Keyboard (PlKbWire wire)
 
 

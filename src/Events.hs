@@ -58,7 +58,7 @@ toggleColour :: G.Color
              -> Entity st
              -> GameMonad st (GameCallback st)
 toggleColour startCol endCol wire e = do
-  sess <- gets $ view gameTime
+  sess <- gets $ view gameSession
   (dt, _) <- stepSession sess
   (res, wire') <- stepWire wire dt (Right (dtime dt))
   case res of

@@ -7,7 +7,7 @@ module Main where
 
 import Prelude hiding ((.), id)
 
-import Control.Wire
+import Control.Wire hiding (Last)
 import Control.Parallel.Strategies
 import Linear.V2
 import System.Random
@@ -41,6 +41,7 @@ import Animation
 import Data.Foldable
 import Debug.Trace
 import qualified SFML.Window.Keyboard as SFML
+import Data.Monoid
 
 
 data PlayerState =
@@ -96,7 +97,7 @@ initState mgrs = do
     setWindowSize wnd (W.Vec2u (fromIntegral gameWidth) (fromIntegral gameHeight))
     return GameState {
         _gameWin    = wnd
-      , _gameTime   = clockSession_
+      , _gameSession = clockSession <&> (\f -> StateDelta $ f (Last (Just initialGameState)))
       , _timeWire   = timeF
       , _frameTime  = 0
       , _fps        = 0
@@ -118,8 +119,10 @@ initState mgrs = do
         , deallocatorSystem
         , animationSystem
         ]
-      , _gameState = BarberGameState PS_Idle
+      , _gameState = initialGameState
     }
+  where
+    initialGameState = BarberGameState PS_Idle
 
 
 ------------------------------------------------------------------------------
@@ -181,11 +184,18 @@ updateWorld = do
 updateGameState :: G.RenderWindow -> GameMonad BarberGameState ()
 updateGameState wnd = do
   gs <- get
-  sess <- gets $ view gameTime
+  gameLogicState <- gets $ view gameState
+  sess <- gets $ view gameSession
   tm   <- gets $ view timeWire
   (dt, sess') <- stepSession sess
-  (_, wire') <- stepWire tm dt (Right dt)
-  gameTime .= sess'
-  timeWire .= wire'
+  (_, wire') <- stepWire (tm . mkSF_ fromStateDelta) dt (Right dt)
+  gameSession .= sess'
+  timeWire .= wire' . mkSF_ (toStateDelta gameLogicState)
   randGen .= gs ^. randGen . to (snd . next)
   lift $ display wnd
+  where
+    toStateDelta :: BarberGameState -> Timed NominalDiffTime () -> StateDelta BarberGameState
+    toStateDelta st tmd = StateDelta (tmd <&> const (Last $ Just st))
+
+    fromStateDelta :: StateDelta BarberGameState -> Timed NominalDiffTime ()
+    fromStateDelta (StateDelta tmd) = fmap (const ()) tmd

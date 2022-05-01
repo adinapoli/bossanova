@@ -4,7 +4,7 @@
 
 import Prelude hiding ((.), id)
 
-import Control.Wire
+import Control.Wire hiding (Last)
 import Control.Parallel.Strategies
 import Linear.V2
 import System.Random
@@ -34,6 +34,7 @@ import Events
 import Settings
 import Physics
 import Animation
+import Data.Monoid
 
 data SeagullState = SeagullState
 
@@ -91,7 +92,7 @@ showMenu = do
   where
     showMenuLoop = do
         win <- gets $ view gameWin
-        sess <- gets $ view gameTime
+        sess <- gets $ view gameSession
         sys <- gets $ view systems
         lift $ clearRenderWindow win white
 
@@ -100,7 +101,7 @@ showMenu = do
 
         -- Update the game state
         (_, sess') <- stepSession sess
-        gameTime .= sess'
+        gameSession .= sess'
         lift $ display win
 
         wantsToPlay <- lift $ pollEvent win
@@ -126,7 +127,7 @@ initState mgrs = do
     setWindowSize wnd (W.Vec2u (fromIntegral gameWidth) (fromIntegral gameHeight))
     return GameState {
         _gameWin    = wnd
-      , _gameTime   = clockSession_
+      , _gameSession = clockSession <&> (\f -> StateDelta $ f (Last (Just (SeagullState))))
       , _timeWire   = timeF
       , _frameTime  = 0
       , _fps        = 0
@@ -233,12 +234,19 @@ updateWorld = do
 --------------------------------------------------------------------------------
 updateGameState :: G.RenderWindow -> GameMonad SeagullState ()
 updateGameState wnd = do
-  gameState <- get
-  sess <- gets $ view gameTime
+  gs <- get
+  gameLogicState <- gets $ view gameState
+  sess <- gets $ view gameSession
   tm   <- gets $ view timeWire
   (dt, sess') <- stepSession sess
-  (_, wire') <- stepWire tm dt (Right dt)
-  gameTime .= sess'
-  timeWire .= wire'
-  randGen .= gameState ^. randGen . to (snd . next)
+  (_, wire') <- stepWire (tm . mkSF_ fromStateDelta) dt (Right dt)
+  gameSession .= sess'
+  timeWire .= wire' . mkSF_ (toStateDelta gameLogicState)
+  randGen .= gs ^. randGen . to (snd . next)
   lift $ display wnd
+  where
+    toStateDelta :: st -> Timed NominalDiffTime () -> StateDelta st
+    toStateDelta st tmd = StateDelta (tmd <&> const (Last $ Just st))
+
+    fromStateDelta :: StateDelta st -> Timed NominalDiffTime ()
+    fromStateDelta (StateDelta tmd) = fmap (const ()) tmd

@@ -244,7 +244,7 @@ rendererSystem :: System st
 rendererSystem = System $ updateAll $ \e ->
   case comp e ^. at AffectRendering of
     Just (Component _ (MustRenderWire w)) -> do
-      sess <- gets $ view gameTime
+      sess <- gets $ view gameSession
       (dt, _) <- stepSession sess
       (res, wire') <- stepWire w dt (Right (dtime dt))
       let newC = Component AffectRendering (MustRenderWire wire')
@@ -290,28 +290,32 @@ inputSystem = System $ updateAll $ \e -> do
   updateKeyboard e
 
   where
+    updateMouse :: Entity st -> GameMonad st ()
     updateMouse e =
       case SMap.lookup Callback (comp e) of
         Just (Component _ (CCallback clbk)) -> do
           clbk' <- runEvent clbk e
           e #.= Component Callback (CCallback clbk')
         _ -> return ()
+
+    updateKeyboard :: Entity st -> GameMonad st ()
     updateKeyboard e =
       case liftM2 (,)
            (SMap.lookup Keyboard (comp e))
            (SMap.lookup Position (comp e)) of
         Just (k@(Component _ (PlKbWire keyboardWire)),
               c@(Component _ (PosInt oldPos))) -> do
-         sess <- gets $ view gameTime
-         (dt, _) <- stepSession sess
-         (res, wire') <- lift $ stepWire keyboardWire dt (Right [])
+         sess <- gets $ view gameSession
+         (StateDelta dt, _) <- stepSession sess
+         (res, wire') <- lift $ stepWire keyboardWire (StateDelta dt) (Right [])
          case res of
            Right (gs, ds) -> do
              updateKbWire wire' k e
              gameState %= gs
              let newC = compData .~ PosInt (oldPos + ds) $ c
              e #.= newC
-           Left  _  -> updateKbWire wire' k e
+           Left  _  -> pure ()
+         updateKbWire wire' k e
         _ -> return ()
 
     updateKbWire wire k e = do
