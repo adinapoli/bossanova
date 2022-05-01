@@ -40,6 +40,7 @@ import Physics
 import Animation
 import Data.Foldable
 import Debug.Trace
+import qualified SFML.Window.Keyboard as SFML
 
 
 data PlayerState =
@@ -132,9 +133,6 @@ buildEntities = do
                  , (Position, position 0 0)
                  ]
                ))
-    (#>) (enemy (V2 20 20))
-    (#>) (enemy (V2 200 20))
-    (#>) (enemy (V2 400 20))
     (#>) (Entity 0 ThePlayer
                (SMap.fromList
                  [(Renderable, animation
@@ -148,27 +146,14 @@ buildEntities = do
                ))
     return ()
 
-
-enemy :: V2 Int -> Entity BarberGameState
-enemy (V2 x y) = Entity 0 Enemy
-  (SMap.fromList
-    [ (Renderable, animation "resources/anims/blackBird.json" 800)
-    , (Timer, discreteTimer 2000)
-    , (EventListener, onEvents [spawnProjectile])
-    , (Position, position x y)
-    ]
-  )
-
-barberCombatPlayerKeyboard :: Int
-                           -> GameWire BarberGameState NominalDiffTime (BarberGameState -> BarberGameState, V2 Int)
+barberCombatPlayerKeyboard :: Int -> PlayerControls BarberGameState (V2 Int)
 barberCombatPlayerKeyboard delta = do
   asum [
       ifPressed W.KeyRight (over gsPlayerState (const PS_Running), V2 delta 0)
     , ifPressed W.KeyLeft (over gsPlayerState (const PS_Running), V2 (-delta) 0)
     , ifPressed W.KeySpace (over gsPlayerState (const PS_Attack1), V2 0 0)
     , mkGen_ $ \_ -> pure $ Right (over gsPlayerState (const PS_Idle), V2 0 0)
-    , inhibit ()
-    ]
+    ] . pressedKeysWire [SFML.KeyRight, SFML.KeyLeft, SFML.KeySpace]
 
 --------------------------------------------------------------------------------
 gameLoop :: GameMonad BarberGameState ()

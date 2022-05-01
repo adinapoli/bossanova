@@ -1,6 +1,9 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Types where
 
@@ -19,10 +22,13 @@ import qualified Data.IntMap.Strict as Map
 import qualified Data.Map.Strict as SMap
 
 import qualified Physics.Hipmunk as H
+import qualified SFML.Window as SFML
 
+
+type StateDelta s = Timed NominalDiffTime s
 
 --------------------------------------------------------------------------------
-type GameWire st i o = Wire (Timed NominalDiffTime ()) () (GameMonad st) i o
+type GameWire st i o = Wire (StateDelta ()) () (GameMonad st) i o
 
 
 --------------------------------------------------------------------------------
@@ -79,7 +85,7 @@ data ComponentData st =
   | CollisionShape !(ShapeState st)
   | MustRenderWire (GameWire st NominalDiffTime Bool)
   | Void
-  | PlKbWire (GameWire st NominalDiffTime (st -> st, V2 Int))
+  | PlKbWire (Wire (StateDelta ()) () SFML [SFML.KeyCode] (st -> st, V2 Int))
 
 --------------------------------------------------------------------------------
 data SpriteState st =

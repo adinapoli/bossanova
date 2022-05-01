@@ -14,11 +14,12 @@ import Utils
 import Systems
 import Wires
 import Entities
+import Control.Monad.Trans.Class (lift)
 
 
 --------------------------------------------------------------------------------
-updateCaption :: Show a
-              => GameWire st NominalDiffTime (st -> st, a)
+updateCaption :: Monoid b
+              => GameWire st b a
               -> Entity st
               -> GameMonad st (GameCallback st)
 updateCaption wire e = do
@@ -36,8 +37,9 @@ updateCaption wire e = do
 
 
 --------------------------------------------------------------------------------
-updateColour :: G.Color
-             -> GameWire st NominalDiffTime a
+updateColour :: Monoid b
+             => G.Color
+             -> GameWire st b a
              -> Entity st
              -> GameMonad st (GameCallback st)
 updateColour targetCol wire e = do

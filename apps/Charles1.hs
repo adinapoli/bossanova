@@ -242,7 +242,7 @@ buildEntities = do
                  , (Colour, colour red)
                  , (Caption, textCaption "Move the player to update")
                  , (EventListener, onEvents [
-                     GameCallback (updateCaption (playerKeyboard 5))
+                     GameCallback (updateCaption (mapWire lift (playerKeyboard 5)))
                    , GameCallback (toggleColour red green (blinkWire 1 2))
                  ])
                  , (Position, position 10 80)

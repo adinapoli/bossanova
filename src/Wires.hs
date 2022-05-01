@@ -15,7 +15,11 @@ import Control.Monad.Trans.State
 import Control.Monad.Trans.Class (lift)
 import Types
 import Data.Foldable (asum)
-
+import Control.Monad.SFML (SFML)
+import qualified SFML.Window.Keyboard as SFML
+import Control.Monad (forM)
+import Data.Maybe (catMaybes)
+import qualified Data.List as L
 
 
 --------------------------------------------------------------------------------
@@ -33,59 +37,62 @@ blinkWire cooldown blinkTime = after cooldown .
 
 
 --------------------------------------------------------------------------------
-ifPressedGo :: W.KeyCode -> V2 Int -> GameWire st NominalDiffTime (st -> st, V2 Int)
+ifPressedGo :: W.KeyCode -> a -> PlayerControls st a
 ifPressedGo code coords = ifPressed code (id, coords)
 
-ifPressed :: W.KeyCode -> (st -> st, a) -> GameWire st NominalDiffTime (st -> st, a)
-ifPressed code f = mkGen_ $ \_ -> do
-  keyPressed <- lift $ isKeyPressed code
-  if keyPressed
-     then return . Right $ f
-     else return . Left $ ()
+ifPressed :: W.KeyCode -> (st -> st, a) -> PlayerControls st a
+ifPressed code (f, a) = mkPure_ $ \pressedThisFrame ->
+  if L.elem code pressedThisFrame then Right (f, a) else Left ()
 
-type PlayerControls st = GameWire st NominalDiffTime (st -> st, V2 Int)
+type PlayerControls st a = Wire (StateDelta ()) () SFML [SFML.KeyCode] (st -> st, a)
 
-wasdControls :: Int -> PlayerControls st
+wasdControls :: Int -> PlayerControls st (V2 Int)
 wasdControls d = moveLeft d W.KeyA <|>
                  moveRight d W.KeyD <|>
                  moveUp d W.KeyW  <|>
                  moveDown d W.KeyS
 
-arrowControls :: Int -> PlayerControls st
+arrowControls :: Int -> PlayerControls st (V2 Int)
 arrowControls d = arrowControls_X d <|>
                   moveUp d W.KeyUp  <|>
                   moveDown d W.KeyDown
 
-arrowControls_X :: Int -> PlayerControls st
+arrowControls_X :: Int -> PlayerControls st (V2 Int)
 arrowControls_X d = moveLeft d W.KeyLeft <|> moveRight d W.KeyRight
 
+pressedKeysWire :: [SFML.KeyCode] -> Wire s () SFML a [SFML.KeyCode]
+pressedKeysWire maybePressed = mkGen_ $ \_ -> do
+  allPressed <- catMaybes <$>
+    forM maybePressed (\k -> isKeyPressed k >>= \p -> pure $ if p then Just k else Nothing)
+  case allPressed of
+    [] -> pure $ Left ()
+    x  -> pure $ Right x
+
 --------------------------------------------------------------------------------
-moveLeft :: Int -> W.KeyCode -> GameWire st NominalDiffTime (st -> st, V2 Int)
+moveLeft :: Int -> W.KeyCode -> PlayerControls st (V2 Int)
 moveLeft dx k = ifPressedGo k (V2 (-dx) 0)
 
-
 --------------------------------------------------------------------------------
-moveRight :: Int -> W.KeyCode -> GameWire st NominalDiffTime (st -> st, V2 Int)
+moveRight :: Int -> W.KeyCode -> PlayerControls st (V2 Int)
 moveRight dx k = ifPressedGo k (V2 dx 0)
 
-
 --------------------------------------------------------------------------------
-moveUp :: Int -> W.KeyCode -> GameWire st NominalDiffTime (st -> st, V2 Int)
+moveUp :: Int -> W.KeyCode -> PlayerControls st (V2 Int)
 moveUp dy k = ifPressedGo k (V2 0 (-dy))
 
-
 --------------------------------------------------------------------------------
-moveDown :: Int -> W.KeyCode -> GameWire st NominalDiffTime (st -> st, V2 Int)
+moveDown :: Int -> W.KeyCode -> PlayerControls st (V2 Int)
 moveDown dy k = ifPressedGo k (V2 0 (dy))
 
+--------------------------------------------------------------------------------
+playerKeyboard :: Int -> PlayerControls st (V2 Int)
+playerKeyboard d =
+  arrowControls d . pressedKeysWire [SFML.KeyLeft, SFML.KeyRight, SFML.KeyUp, SFML.KeyDown]
 
 --------------------------------------------------------------------------------
-playerKeyboard :: Int -> PlayerControls st
-playerKeyboard d = arrowControls d <|> inhibit ()
-
---------------------------------------------------------------------------------
-seagullPlayerKeyboard :: Int -> GameWire st NominalDiffTime (st -> st, V2 Int)
-seagullPlayerKeyboard delta = arrowControls_X delta <|> inhibit ()
+seagullPlayerKeyboard :: Int
+                      -> PlayerControls st (V2 Int)
+seagullPlayerKeyboard delta = arrowControls_X delta . pressedKeysWire [SFML.KeyLeft, SFML.KeyRight]
 
 --------------------------------------------------------------------------------
 always :: GameWire st a Bool
@@ -101,13 +108,13 @@ glowingText = for 0.5 . pure 20 -->
 
 
 --------------------------------------------------------------------------------
-stepTimed :: GameWire st NominalDiffTime b
+stepTimed :: Monoid a => GameWire st a b
           -> (b -> GameMonad st c)
-          -> GameMonad st (GameWire st NominalDiffTime b)
+          -> GameMonad st (GameWire st a b)
 stepTimed wire fn = do
   sess <- gets $ view gameTime
   (dt, _) <- stepSession sess
-  (res, wire') <- stepWire wire dt (Right (dtime dt))
+  (res, wire') <- stepWire wire dt (Right mempty)
   either (const $ return wire') (\v -> fn v >> return wire') res
 
 

@@ -21,6 +21,7 @@ import Callbacks
 import Animation
 import Entities
 import Utils
+import qualified SFML.Window as SFML
 
 
 --------------------------------------------------------------------------------
@@ -73,7 +74,7 @@ translationFromV2 (V2 x y) = G.renderStates {
 
 
 --------------------------------------------------------------------------------
-keyboard :: GameWire st NominalDiffTime (st -> st, V2 Int) -> Component st
+keyboard :: Wire (StateDelta ()) () SFML [SFML.KeyCode] (st -> st, V2 Int) -> Component st
 keyboard wire = Component Keyboard (PlKbWire wire)
 
 

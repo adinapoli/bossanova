@@ -300,15 +300,15 @@ inputSystem = System $ updateAll $ \e -> do
       case liftM2 (,)
            (SMap.lookup Keyboard (comp e))
            (SMap.lookup Position (comp e)) of
-        Just (k@(Component _ (PlKbWire w)),
+        Just (k@(Component _ (PlKbWire keyboardWire)),
               c@(Component _ (PosInt oldPos))) -> do
          sess <- gets $ view gameTime
          (dt, _) <- stepSession sess
-         (res, wire') <- stepWire w dt (Right (dtime dt))
+         (res, wire') <- lift $ stepWire keyboardWire dt (Right [])
          case res of
-           Right (updateGameState, ds) -> do
+           Right (gs, ds) -> do
              updateKbWire wire' k e
-             gameState %= updateGameState
+             gameState %= gs
              let newC = compData .~ PosInt (oldPos + ds) $ c
              e #.= newC
            Left  _  -> updateKbWire wire' k e
