@@ -35,29 +35,33 @@ animation :: FilePath
           -- ^ How much display each frame
           -> Component st
 animation pathToJson frameTime =
-  Component Renderable (CAnimation (UninitializedAnimation clbk))
-  where
-    clbk :: GameMonad st Animation
-    clbk = do
-      now <- liftIO milliTime
-      allJson <- (fromJust . decode <$> liftIO (BL.readFile pathToJson)) :: GameMonad st Value
-      let (Just texFileName) = allJson ^? key "meta" . key "image" . _String
-      let frms = buildFrames (fromJust $ allJson ^? key "frames" . _Array)
-      spr <- initSpriteClbk
-      tex <- initTextureClbk . fromString $
-             (takeDirectory pathToJson <> "/" <> T.unpack texFileName)
-      lift $ setTexture spr tex True
-      lift $ setTextureRect spr (frms V.! 0)
-      return Animation {
-                _animationBoundingBoxes = frms
-              , _animationSprite  = spr
-              , _animationTexture = tex
-              , _animationPlaying = True
-              , _animationInternalTime = now
-              , _animationCurrentIdx = 0
-              , _animFrameTime = frameTime
-              }
+  Component Renderable (CAnimation (UninitializedAnimation (mkAnimation pathToJson frameTime)))
 
+mkAnimation :: FilePath
+            -- ^ Where the animation json is stored
+            -> Double
+            -- ^ How much display each frame
+            -> GameMonad st Animation
+mkAnimation pathToJson frameTime = do
+  now <- liftIO milliTime
+  allJson <- (fromJust . decode <$> liftIO (BL.readFile pathToJson)) :: GameMonad st Value
+  let (Just texFileName) = allJson ^? key "meta" . key "image" . _String
+  let frms = buildFrames (fromJust $ allJson ^? key "frames" . _Array)
+  spr <- initSpriteClbk
+  tex <- initTextureClbk . fromString $
+         (takeDirectory pathToJson <> "/" <> T.unpack texFileName)
+  lift $ setTexture spr tex True
+  lift $ setTextureRect spr (frms V.! 0)
+  return Animation {
+            _animationBoundingBoxes = frms
+          , _animationSprite  = spr
+          , _animationTexture = tex
+          , _animationPlaying = True
+          , _animationInternalTime = now
+          , _animationCurrentIdx = 0
+          , _animFrameTime = frameTime
+          }
+  where
     buildFrames :: V.Vector Value -> V.Vector G.IntRect
     buildFrames = V.map (\v -> buildFrame . fromJust $ v ^? key "frame")
 
@@ -68,7 +72,6 @@ animation pathToJson frameTime =
         left   = fromInteger . fromJust $ v ^? key "y" . _Integer
         width  = fromInteger . fromJust $ v ^? key "w" . _Integer
         height = fromInteger . fromJust $ v ^? key "h" . _Integer
-
 
 --------------------------------------------------------------------------------
 playAnimation :: Animation -> Animation

@@ -64,9 +64,7 @@ pressedKeysWire :: [SFML.KeyCode] -> Wire s () SFML a [SFML.KeyCode]
 pressedKeysWire maybePressed = mkGen_ $ \_ -> do
   allPressed <- catMaybes <$>
     forM maybePressed (\k -> isKeyPressed k >>= \p -> pure $ if p then Just k else Nothing)
-  case allPressed of
-    [] -> pure $ Left ()
-    x  -> pure $ Right x
+  pure $ Right allPressed
 
 --------------------------------------------------------------------------------
 moveLeft :: Int -> W.KeyCode -> PlayerControls st (V2 Int)

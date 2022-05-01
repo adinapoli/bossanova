@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DoAndIfThenElse #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TupleSections #-}
 
 module Main where
 
@@ -42,13 +43,15 @@ import Data.Foldable
 import Debug.Trace
 import qualified SFML.Window.Keyboard as SFML
 import Data.Monoid
+import Data.Map.Strict (Map)
+import Data.Maybe
 
 
 data PlayerState =
     PS_Idle
   | PS_Running
   | PS_Attack1
-  deriving (Show, Eq)
+  deriving (Show, Eq, Ord)
 
 data BarberGameState = BarberGameState
   { _gsPlayerState :: PlayerState
@@ -124,7 +127,6 @@ initState mgrs = do
   where
     initialGameState = BarberGameState PS_Idle
 
-
 ------------------------------------------------------------------------------
 buildEntities :: GameMonad BarberGameState ()
 buildEntities = do
@@ -138,10 +140,10 @@ buildEntities = do
                ))
     (#>) (Entity 0 ThePlayer
                (SMap.fromList
-                 [(Renderable, animation
-                                "resources/anims/barber/biker_idle.json"
-                                2000
-                   )
+                 [(Renderable, animationWire $ playerAnimationWire [
+                     (PS_Idle, ("resources/anims/barber/biker_idle.json", 2000))
+                  ,  (PS_Running, ("resources/anims/barber/biker_run.json", 500))
+                  ])
                  , (StaticBody, staticObj (H.Circle 30))
                  , (Position, position 0 (gameHeight - 400))
                  , (Keyboard, keyboard (barberCombatPlayerKeyboard 5))
@@ -150,13 +152,45 @@ buildEntities = do
     return ()
 
 barberCombatPlayerKeyboard :: Int -> PlayerControls BarberGameState (V2 Int)
-barberCombatPlayerKeyboard delta = do
-  asum [
-      ifPressed W.KeyRight (over gsPlayerState (const PS_Running), V2 delta 0)
-    , ifPressed W.KeyLeft (over gsPlayerState (const PS_Running), V2 (-delta) 0)
-    , ifPressed W.KeySpace (over gsPlayerState (const PS_Attack1), V2 0 0)
-    , mkGen_ $ \_ -> pure $ Right (over gsPlayerState (const PS_Idle), V2 0 0)
-    ] . pressedKeysWire [SFML.KeyRight, SFML.KeyLeft, SFML.KeySpace]
+barberCombatPlayerKeyboard delta =
+  let playerMoves =
+        asum [
+            ifPressed W.KeyRight (over gsPlayerState (const PS_Running), V2 delta 0)
+          , ifPressed W.KeyLeft (over gsPlayerState (const PS_Running), V2 (-delta) 0)
+          , ifPressed W.KeySpace (over gsPlayerState (const PS_Attack1), V2 0 0)
+          , playerIdle
+          ] . pressedKeysWire [SFML.KeyRight, SFML.KeyLeft, SFML.KeySpace]
+  in playerMoves
+  where
+    playerIdle :: PlayerControls BarberGameState (V2 Int)
+    playerIdle = mkGen_ $ \pressed -> case pressed of
+      [] -> pure $ Right (over gsPlayerState (const PS_Idle), V2 0 0)
+      xs -> pure $ Left ()
+
+animationWire :: GameWire BarberGameState () Animation -> Component BarberGameState
+animationWire = Component Renderable . CAnimation . WireAnimation
+
+playerAnimationWire :: [(PlayerState, (FilePath, Double))]
+                    -> GameWire BarberGameState () Animation
+playerAnimationWire animationBundle =
+  let w1 = mkGen $ \s initialisedAnims -> case fromStateDelta s of
+            (Last Nothing)   ->
+              pure (Right $ fromMaybe (error "PS_Idle animation not specified.") $
+                            SMap.lookup PS_Idle initialisedAnims
+                   , w1)
+            (Last (Just st)) -> case SMap.lookup (_gsPlayerState st) initialisedAnims of
+                Nothing -> error $ "Player state " <> show st <> " doesn't have correspoding animation."
+                Just a  -> pure (Right a, w1)
+      in w1 . initAnims
+  where
+
+    fromStateDelta :: StateDelta s -> Last s
+    fromStateDelta (StateDelta tmd) = case tmd of Timed _ l -> l
+
+    initAnims :: GameWire BarberGameState () (Map PlayerState Animation)
+    initAnims = mkGen_ $ \_ -> do
+      anims <- forM animationBundle $ \(ps, (fp, d)) -> (ps,) <$> mkAnimation fp d
+      pure $ Right (SMap.fromList anims)
 
 --------------------------------------------------------------------------------
 gameLoop :: GameMonad BarberGameState ()
@@ -189,12 +223,12 @@ updateGameState wnd = do
   tm   <- gets $ view timeWire
   (dt, sess') <- stepSession sess
   (_, wire') <- stepWire (tm . mkSF_ fromStateDelta) dt (Right dt)
-  gameSession .= sess'
+  gameSession .= (sess' <&> \(StateDelta tmd) -> toStateDelta gameLogicState tmd)
   timeWire .= wire' . mkSF_ (toStateDelta gameLogicState)
   randGen .= gs ^. randGen . to (snd . next)
   lift $ display wnd
   where
-    toStateDelta :: BarberGameState -> Timed NominalDiffTime () -> StateDelta BarberGameState
+    toStateDelta :: BarberGameState -> Timed NominalDiffTime a -> StateDelta BarberGameState
     toStateDelta st tmd = StateDelta (tmd <&> const (Last $ Just st))
 
     fromStateDelta :: StateDelta BarberGameState -> Timed NominalDiffTime ()

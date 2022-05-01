@@ -43,26 +43,27 @@ type GameMonad st = StateT (GameState st) SFML
 --------------------------------------------------------------------------------
 data Tag =
     Position
-  | Tagless
-  | Velocity
-  | LinearForce
-  | DynamicBody
-  | Texture
-  | BoundingBox
-  | StaticBody
-  | Joint
-  | Keyboard
-  | Callback
-  | Timer
   | AffectRendering
+  | BoundingBox
+  | Callback
+  | Caption
+  | Colour
+  | Disposable
+  | DynamicBody
+  | EventHolder
   | EventListener
   | EventPublisher
-  | Disposable
-  | EventHolder
+  | Joint
+  | Keyboard
+  | LinearForce
+  | Renderable
   | Size
-  | Colour
-  | Caption
-  | Renderable deriving (Show, Ord, Eq)
+  | StaticBody
+  | Tagless
+  | Texture
+  | Timer
+  | Velocity
+  deriving (Show, Ord, Eq)
 
 
 --------------------------------------------------------------------------------
@@ -234,6 +235,7 @@ data Animation = Animation {
 data AnimationState st =
       UninitializedAnimation !(GameMonad st Animation)
     | InitializedAnimation !Animation
+    | WireAnimation !(GameWire st () Animation)
 
 
 --------------------------------------------------------------------------------

@@ -1,3 +1,6 @@
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE BangPatterns #-}
 module Systems where
 
 import Prelude hiding ((.), id)
@@ -25,6 +28,7 @@ import Physics
 import Settings
 import Animation
 import Utils
+import Debug.Trace (traceShow, traceShowId)
 
 
 --------------------------------------------------------------------------------
@@ -284,7 +288,7 @@ updateSprite co =
 
 
 --------------------------------------------------------------------------------
-inputSystem :: System st
+inputSystem :: forall st. System st
 inputSystem = System $ updateAll $ \e -> do
   updateMouse e
   updateKeyboard e
@@ -310,8 +314,8 @@ inputSystem = System $ updateAll $ \e -> do
          (res, wire') <- lift $ stepWire keyboardWire (StateDelta dt) (Right [])
          case res of
            Right (gs, ds) -> do
-             updateKbWire wire' k e
              gameState %= gs
+             -- !(_) <- traceShowId <$> gets (view gameState)
              let newC = compData .~ PosInt (oldPos + ds) $ c
              e #.= newC
            Left  _  -> pure ()
@@ -329,11 +333,13 @@ animationSystem = System $ updateAll $ \e ->
   case liftM2 (,)
        (comp e ^. at Position)
        (comp e ^. at Renderable) of
+
     Just (_,
           Component _ (CAnimation (UninitializedAnimation clbk))) -> do
       anim <- clbk
       let newC = Component Renderable (CAnimation (InitializedAnimation anim))
       e #.= newC
+
     Just ( Component _ (PosInt currentPos)
          , Component _ (CAnimation (InitializedAnimation anim))) -> do
      win <- gets $ view gameWin
@@ -342,4 +348,19 @@ animationSystem = System $ updateAll $ \e ->
      lift $ drawSprite win (_animationSprite anim') pos
      let newC = Component Renderable (CAnimation (InitializedAnimation anim'))
      e #.= newC
+
+    Just ( Component _ (PosInt currentPos)
+         , Component _ (CAnimation (WireAnimation animWire))) -> do
+      sess <- gets $ view gameSession
+      (StateDelta dt, _) <- stepSession sess
+      (res, wire') <- stepWire animWire (StateDelta dt) (Right ())
+      case res of
+        Right animToRender -> do
+          win <- gets $ view gameWin
+          anim' <- stepAnimation animToRender
+          let pos = Just $ translationFromV2 currentPos
+          lift $ drawSprite win (_animationSprite anim') pos
+          let newC = Component Renderable (CAnimation (WireAnimation wire'))
+          e #.= newC
+        Left () -> return ()
     _ -> return ()
