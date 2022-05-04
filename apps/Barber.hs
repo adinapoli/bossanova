@@ -100,7 +100,7 @@ initState mgrs = do
     setWindowSize wnd (W.Vec2u (fromIntegral gameWidth) (fromIntegral gameHeight))
     return GameState {
         _gameWin    = wnd
-      , _gameSession = clockSession <&> (\f -> StateDelta $ f (Last (Just initialGameState)))
+      , _gameSession = clockSession <&> (\f -> StateDelta $ f (Last (Just (traceShow "restored!" initialGameState))))
       , _timeWire   = timeF
       , _frameTime  = 0
       , _fps        = 0
@@ -167,17 +167,14 @@ barberCombatPlayerKeyboard delta =
       [] -> pure $ Right (over gsPlayerState (const PS_Idle), V2 0 0)
       xs -> pure $ Left ()
 
-animationWire :: GameWire BarberGameState () Animation -> Component BarberGameState
-animationWire = Component Renderable . CAnimation . WireAnimation
+animationWire :: GameWire BarberGameState (Maybe Animation) Animation -> Component BarberGameState
+animationWire = Component Renderable . CAnimation . WireAnimation Nothing
 
 playerAnimationWire :: [(PlayerState, (FilePath, Double))]
-                    -> GameWire BarberGameState () Animation
+                    -> GameWire BarberGameState (Maybe Animation) Animation
 playerAnimationWire animationBundle =
   let w1 = mkGen $ \s initialisedAnims -> case fromStateDelta s of
-            (Last Nothing)   ->
-              pure (Right $ fromMaybe (error "PS_Idle animation not specified.") $
-                            SMap.lookup PS_Idle initialisedAnims
-                   , w1)
+            (Last Nothing) -> pure (Left (), w1)
             (Last (Just st)) -> case SMap.lookup (_gsPlayerState st) initialisedAnims of
                 Nothing -> error $ "Player state " <> show st <> " doesn't have correspoding animation."
                 Just a  -> pure (Right a, w1)
@@ -187,7 +184,7 @@ playerAnimationWire animationBundle =
     fromStateDelta :: StateDelta s -> Last s
     fromStateDelta (StateDelta tmd) = case tmd of Timed _ l -> l
 
-    initAnims :: GameWire BarberGameState () (Map PlayerState Animation)
+    initAnims :: GameWire BarberGameState (Maybe Animation) (Map PlayerState Animation)
     initAnims = mkGen_ $ \_ -> do
       anims <- forM animationBundle $ \(ps, (fp, d)) -> (ps,) <$> mkAnimation fp d
       pure $ Right (SMap.fromList anims)
@@ -224,12 +221,22 @@ updateGameState wnd = do
   (dt, sess') <- stepSession sess
   (_, wire') <- stepWire (tm . mkSF_ fromStateDelta) dt (Right dt)
   gameSession .= (sess' <&> \(StateDelta tmd) -> toStateDelta gameLogicState tmd)
-  timeWire .= wire' . mkSF_ (toStateDelta gameLogicState)
+  timeWire .= wire' . mkSF_ (toStateDelta' gameLogicState)
   randGen .= gs ^. randGen . to (snd . next)
   lift $ display wnd
   where
-    toStateDelta :: BarberGameState -> Timed NominalDiffTime a -> StateDelta BarberGameState
-    toStateDelta st tmd = StateDelta (tmd <&> const (Last $ Just st))
+    toStateDelta :: BarberGameState
+                 -> Timed NominalDiffTime (Last BarberGameState)
+                 -> StateDelta BarberGameState
+    toStateDelta st tmd = StateDelta (tmd <&> modifyIfChanged st)
+
+    toStateDelta' :: BarberGameState -> Timed NominalDiffTime a -> StateDelta BarberGameState
+    toStateDelta' st tmd = StateDelta (tmd <&> const (Last (Just st)))
 
     fromStateDelta :: StateDelta BarberGameState -> Timed NominalDiffTime ()
     fromStateDelta (StateDelta tmd) = fmap (const ()) tmd
+
+modifyIfChanged :: (Show a, Eq a) => a -> Last a -> Last a
+modifyIfChanged new (Last Nothing) = Last (Just new)
+modifyIfChanged new (Last (Just old))
+  = if new == old then Last Nothing else Last $ Just new

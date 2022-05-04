@@ -350,17 +350,25 @@ animationSystem = System $ updateAll $ \e ->
      e #.= newC
 
     Just ( Component _ (PosInt currentPos)
-         , Component _ (CAnimation (WireAnimation animWire))) -> do
+         , Component _ (CAnimation (WireAnimation lastRendered animWire))) -> do
       sess <- gets $ view gameSession
+      win <- gets $ view gameWin
       (StateDelta dt, _) <- stepSession sess
-      (res, wire') <- stepWire animWire (StateDelta dt) (Right ())
-      case res of
+      (res, wire') <- stepWire animWire (StateDelta dt) (Right lastRendered)
+      newWire <- case res of
         Right animToRender -> do
-          win <- gets $ view gameWin
           anim' <- stepAnimation animToRender
           let pos = Just $ translationFromV2 currentPos
           lift $ drawSprite win (_animationSprite anim') pos
-          let newC = Component Renderable (CAnimation (WireAnimation wire'))
-          e #.= newC
-        Left () -> return ()
+          pure $ WireAnimation (Just anim') wire'
+        Left () -> do
+          case lastRendered of
+            Nothing -> pure $ WireAnimation Nothing wire'
+            Just a  -> do
+              a' <- stepAnimation a
+              let pos = Just $ translationFromV2 currentPos
+              lift $ drawSprite win (_animationSprite a') pos
+              pure $ WireAnimation (Just a') wire'
+      let newC = Component Renderable (CAnimation newWire)
+      e #.= newC
     _ -> return ()

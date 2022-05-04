@@ -235,7 +235,7 @@ data Animation = Animation {
 data AnimationState st =
       UninitializedAnimation !(GameMonad st Animation)
     | InitializedAnimation !Animation
-    | WireAnimation !(GameWire st () Animation)
+    | WireAnimation !(Maybe Animation) !(GameWire st (Maybe Animation) Animation)
 
 
 --------------------------------------------------------------------------------
