@@ -228,6 +228,7 @@ data Animation = Animation {
   , _animationInternalTime :: !Word64
   , _animationCurrentIdx :: !Int
   , _animFrameTime :: !Double
+  , _animFilePath  :: !FilePath
   }
 
 

@@ -100,7 +100,7 @@ initState mgrs = do
     setWindowSize wnd (W.Vec2u (fromIntegral gameWidth) (fromIntegral gameHeight))
     return GameState {
         _gameWin    = wnd
-      , _gameSession = clockSession <&> (\f -> StateDelta $ f (Last (Just (traceShow "restored!" initialGameState))))
+      , _gameSession = clockSession <&> (\f -> StateDelta $ f (Last (Just initialGameState)))
       , _timeWire   = timeF
       , _frameTime  = 0
       , _fps        = 0
@@ -141,8 +141,8 @@ buildEntities = do
     (#>) (Entity 0 ThePlayer
                (SMap.fromList
                  [(Renderable, animationWire $ playerAnimationWire [
-                     (PS_Idle, ("resources/anims/barber/biker_idle.json", 2000))
-                  ,  (PS_Running, ("resources/anims/barber/biker_run.json", 500))
+                     (PS_Idle, ("resources/anims/barber/biker_idle.json", 1000))
+                  ,  (PS_Running, ("resources/anims/barber/biker_run.json", 100))
                   ])
                  , (StaticBody, staticObj (H.Circle 30))
                  , (Position, position 0 (gameHeight - 400))

@@ -60,6 +60,7 @@ mkAnimation pathToJson frameTime = do
           , _animationInternalTime = now
           , _animationCurrentIdx = 0
           , _animFrameTime = frameTime
+          , _animFilePath = pathToJson
           }
   where
     buildFrames :: V.Vector Value -> V.Vector G.IntRect

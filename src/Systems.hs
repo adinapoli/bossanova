@@ -1,6 +1,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE PatternGuards #-}
 module Systems where
 
 import Prelude hiding ((.), id)
@@ -356,11 +357,21 @@ animationSystem = System $ updateAll $ \e ->
       (StateDelta dt, _) <- stepSession sess
       (res, wire') <- stepWire animWire (StateDelta dt) (Right lastRendered)
       newWire <- case res of
-        Right animToRender -> do
-          anim' <- stepAnimation animToRender
-          let pos = Just $ translationFromV2 currentPos
-          lift $ drawSprite win (_animationSprite anim') pos
-          pure $ WireAnimation (Just anim') wire'
+        Right animToRender
+          | Just rdrd <- lastRendered
+          -> do
+            let toStep = if _animFilePath animToRender == _animFilePath rdrd
+                            then rdrd else animToRender
+            anim' <- stepAnimation toStep
+            let pos = Just $ translationFromV2 currentPos
+            lift $ drawSprite win (_animationSprite anim') pos
+            pure $ WireAnimation (Just anim') wire'
+          | otherwise
+          -> do
+            anim' <- stepAnimation animToRender
+            let pos = Just $ translationFromV2 currentPos
+            lift $ drawSprite win (_animationSprite anim') pos
+            pure $ WireAnimation (Just anim') wire'
         Left () -> do
           case lastRendered of
             Nothing -> pure $ WireAnimation Nothing wire'
